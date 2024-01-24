@@ -35,8 +35,7 @@ func APIToken() string {
 	var token string
 
 	for {
-		fmt.Print("API Token: ")
-		fmt.Scanln(&token)
+		InString("API Token", &token)
 		token = strings.TrimSpace(token)
 		if token != "" {
 			break
@@ -56,10 +55,9 @@ func Passowrd() string {
 	var confirmPass string
 
 	for {
-		fmt.Print("Password: ")
-		fmt.Scanln(&pass)
-		fmt.Print("Confirm Password: ")
-		fmt.Scanln(&confirmPass)
+		InString("Password", &pass)
+		InString("Confirm Password", &confirmPass)
+
 		if pass == confirmPass {
 			break
 		}
@@ -70,4 +68,11 @@ func Passowrd() string {
 	}
 
 	return pass
+}
+
+// InString prints msg and takes a string input from the user. The input value will be stored
+// in dst. The prompt is formatted as "msg: ".
+func InString(msg string, dst *string) {
+	fmt.Printf("%s: ", msg)
+	fmt.Scanln(dst)
 }
