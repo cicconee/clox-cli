@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -19,31 +20,54 @@ var initCmd = &cobra.Command{
 	Short: "Set up the Clox CLI",
 	Args:  cobra.ExactArgs(0),
 	Run: func(cmd *cobra.Command, args []string) {
-		var token string
-		var pass string
-		var confirmPass string
-
 		fmt.Println("Configuring Clox CLI")
-		fmt.Print("API Token: ")
-		fmt.Scanln(&token)
-		for {
-			fmt.Print("Password: ")
-			fmt.Scanln(&pass)
-			fmt.Print("Confirm Password: ")
-			fmt.Scanln(&confirmPass)
-
-			if pass == confirmPass {
-				fmt.Printf("Pass: %q\n", pass)
-				fmt.Printf("Conf: %q\n", confirmPass)
-				break
-			}
-
-			fmt.Println("Passwords do not match")
-			pass = ""
-			confirmPass = ""
-		}
-
+		token := APIToken()
+		password := Passowrd()
 		fmt.Println("API Token:", token)
+		fmt.Println("Password:", password)
 		fmt.Println("Initialized the Clox CLI")
 	},
+}
+
+// APIToken will prompt the user to enter an API token. If an empty value is entered, it will
+// loop until user enters a value. Once a valid API token is entered, it will return it.
+func APIToken() string {
+	var token string
+
+	for {
+		fmt.Print("API Token: ")
+		fmt.Scanln(&token)
+		token = strings.TrimSpace(token)
+		if token != "" {
+			break
+		}
+
+		fmt.Println("Token cannot be empty")
+	}
+
+	return token
+}
+
+// Password will prompt the user to enter and confirm a password. If passwords do not match,
+// it will loop until user confirms a valid password. Once a password is confirmed, it will
+// be returned.
+func Passowrd() string {
+	var pass string
+	var confirmPass string
+
+	for {
+		fmt.Print("Password: ")
+		fmt.Scanln(&pass)
+		fmt.Print("Confirm Password: ")
+		fmt.Scanln(&confirmPass)
+		if pass == confirmPass {
+			break
+		}
+
+		fmt.Println("Passwords do not match")
+		pass = ""
+		confirmPass = ""
+	}
+
+	return pass
 }
