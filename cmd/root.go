@@ -8,8 +8,9 @@ import (
 
 // The root command of Clox CLI.
 var rootCmd = &cobra.Command{
-	Use:   "clox",
-	Short: "The official client of the Clox API",
+	Use:           "clox",
+	Short:         "The official client of the Clox API",
+	SilenceErrors: true,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		// TODO: Check if cmd is not 'init' and that configuration is setup.
 		if cmd.Name() != "init" { // && validConfiguration
