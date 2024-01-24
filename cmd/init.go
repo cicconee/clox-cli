@@ -1,7 +1,10 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -12,7 +15,6 @@ import (
 // initCmd will initialize and set up the Clox CLI configuration.
 //
 // TODO:
-//   - Create hidden .clox directory in users home directory.
 //   - Create ./clox/config.json file that will store the password hash, encrypted api token,
 //     encrypted private key, and the public key.
 var initCmd = &cobra.Command{
@@ -20,12 +22,41 @@ var initCmd = &cobra.Command{
 	Short: "Set up the Clox CLI",
 	Args:  cobra.ExactArgs(0),
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Configuring Clox CLI")
 		token := APIToken()
 		password := Passowrd()
 		fmt.Println("API Token:", token)
 		fmt.Println("Password:", password)
-		fmt.Println("Initialized the Clox CLI")
+
+		userHome, err := os.UserHomeDir()
+		if err != nil {
+			fmt.Printf("Could not get users home directory: %v\n", err)
+			os.Exit(1)
+		}
+
+		cloxDirPath := filepath.Join(userHome, ".clox")
+		fi, err := os.Stat(cloxDirPath)
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				// TODO: Create Clox configuration files along with directory.
+				if err := os.Mkdir(cloxDirPath, 0700); err != nil {
+					fmt.Printf("Failed to create Clox directory: %v\n", err)
+					os.Exit(1)
+				}
+
+				fmt.Println("Success")
+				os.Exit(0)
+			} else {
+				fmt.Printf("Could not get %s stat: %v\n", cloxDirPath, err)
+				os.Exit(1)
+			}
+		}
+
+		if fi.IsDir() {
+			fmt.Println("Clox already configured")
+			os.Exit(0)
+		}
+
+		fmt.Println("Cannot create .clox directory: .clox exists as a file in home directory")
 	},
 }
 
