@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -15,48 +16,42 @@ import (
 // initCmd will initialize and set up the Clox CLI configuration.
 //
 // TODO:
-//   - Create ./clox/config.json file that will store the password hash, encrypted api token,
-//     encrypted private key, and the public key.
+//   - Create private and public key.
+//   - Hash the password
+//   - Encrypt the api token, private key, and public key with password
 var initCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Set up the Clox CLI",
 	Args:  cobra.ExactArgs(0),
 	Run: func(cmd *cobra.Command, args []string) {
-		token := APIToken()
-		password := Passowrd()
-		fmt.Println("API Token:", token)
-		fmt.Println("Password:", password)
-
-		userHome, err := os.UserHomeDir()
+		config, err := NewConfig()
 		if err != nil {
-			fmt.Printf("Could not get users home directory: %v\n", err)
+			fmt.Printf("Error: Failed initializing the configuration: %v\n", err)
 			os.Exit(1)
 		}
 
-		cloxDirPath := filepath.Join(userHome, ".clox")
-		fi, err := os.Stat(cloxDirPath)
+		exists, err := config.Exists()
 		if err != nil {
-			if errors.Is(err, os.ErrNotExist) {
-				// TODO: Create Clox configuration files along with directory.
-				if err := os.Mkdir(cloxDirPath, 0700); err != nil {
-					fmt.Printf("Failed to create Clox directory: %v\n", err)
-					os.Exit(1)
-				}
-
-				fmt.Println("Success")
-				os.Exit(0)
-			} else {
-				fmt.Printf("Could not get %s stat: %v\n", cloxDirPath, err)
-				os.Exit(1)
-			}
+			fmt.Printf("Error: %v\n", err)
+			os.Exit(1)
 		}
 
-		if fi.IsDir() {
-			fmt.Println("Clox already configured")
+		if exists {
+			fmt.Println("Clox CLI already initialized")
 			os.Exit(0)
 		}
 
-		fmt.Println("Cannot create .clox directory: .clox exists as a file in home directory")
+		err = config.Write(WriteFileParams{
+			Password: APIToken(),
+			APIToken: Passowrd(),
+		})
+		if err != nil {
+			fmt.Printf("Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		fmt.Println("Success")
+		os.Exit(0)
 	},
 }
 
@@ -106,4 +101,71 @@ func Passowrd() string {
 func InString(msg string, dst *string) {
 	fmt.Printf("%s: ", msg)
 	fmt.Scanln(dst)
+}
+
+// Config manages the configuration for the Clox CLI app. It ensures all the proper directories
+// and files are initialized. User configuration settings can be read with Config.
+//
+// Config should only be initialized by calling NewConfig.
+type Config struct {
+	// The path to the .clox directory. Path will always be the path to the users directory
+	// with /.clox appended at the end.
+	Path string
+}
+
+// NewConfig creates a Config and sets to the Path to the users home directory with /.clox
+// appended to the end. If it cannot get the users home directory an error is returned.
+func NewConfig() (*Config, error) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return nil, fmt.Errorf("failed getting home directory: %w", err)
+	}
+
+	return &Config{
+		Path: filepath.Join(homeDir, ".clox"),
+	}, nil
+}
+
+// Exists checks if the Path of this Config exists on the operating system as a directory.
+func (c *Config) Exists() (bool, error) {
+	fi, err := os.Stat(c.Path)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return false, nil
+		}
+
+		return false, err
+	}
+
+	if fi.IsDir() {
+		return true, nil
+	}
+
+	return false, errors.New(".clox already exists as a file in home directory")
+}
+
+// The parameters when writing the config.json file.
+type WriteFileParams struct {
+	Password string `json:"password"`
+	APIToken string `json:"api_token"`
+}
+
+// Write will write the parameters to the config.json file. The config.json file will be
+// stored within the Path of this Config.
+func (c *Config) Write(p WriteFileParams) error {
+	if err := os.Mkdir(c.Path, 0700); err != nil {
+		return fmt.Errorf("failed creating directory %s: %w", c.Path, err)
+	}
+
+	data, err := json.Marshal(p)
+	if err != nil {
+		return fmt.Errorf("failed marshalling data to json: %w", err)
+	}
+
+	filePath := filepath.Join(c.Path, "config.json")
+	if err := os.WriteFile(filePath, data, 0600); err != nil {
+		return fmt.Errorf("failed writing file %s: %w", filePath, err)
+	}
+
+	return nil
 }
