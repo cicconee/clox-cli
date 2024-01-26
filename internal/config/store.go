@@ -49,6 +49,25 @@ func (s *Store) DirExists() (bool, error) {
 	return false, errors.New(".clox already exists as a file in home directory")
 }
 
+// FileExists checks if the "config.json" file exists within the Path of this Store.
+func (s *Store) FileExists() (bool, error) {
+	filePath := filepath.Join(s.Path, "config.json")
+	fi, err := os.Stat(filePath)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return false, nil
+		}
+
+		return false, nil
+	}
+
+	if fi.IsDir() {
+		return false, errors.New("config.json exists as a directory")
+	}
+
+	return true, nil
+}
+
 // The parameters when writing the config.json file.
 type WriteFileParams struct {
 	Password string `json:"password"`
