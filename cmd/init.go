@@ -33,8 +33,20 @@ var initCmd = &cobra.Command{
 			fmt.Printf("Error: %v\n", err)
 			os.Exit(1)
 		}
+		if !exists {
+			err := store.WriteDir()
+			if err != nil {
+				fmt.Printf("Error: %v\n", err)
+				os.Exit(1)
+			}
+		}
 
-		if exists {
+		fileExists, err := store.FileExists()
+		if err != nil {
+			fmt.Printf("Error: %v\n", err)
+			os.Exit(1)
+		}
+		if fileExists {
 			fmt.Println("Clox CLI already initialized")
 			os.Exit(0)
 		}

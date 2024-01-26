@@ -68,6 +68,12 @@ func (s *Store) FileExists() (bool, error) {
 	return true, nil
 }
 
+// WriteDir will write the .clox directory to the file system with the value of Path
+// in this Store.
+func (s *Store) WriteDir() error {
+	return os.Mkdir(s.Path, 0700)
+}
+
 // The parameters when writing the config.json file.
 type WriteFileParams struct {
 	Password string `json:"password"`
@@ -77,10 +83,6 @@ type WriteFileParams struct {
 // Write will write the parameters to the config.json file. The config.json file will be
 // stored within the Path of this Store on the file system.
 func (s *Store) Write(p WriteFileParams) error {
-	if err := os.Mkdir(s.Path, 0700); err != nil {
-		return fmt.Errorf("failed creating directory %s: %w", s.Path, err)
-	}
-
 	data, err := json.Marshal(p)
 	if err != nil {
 		return fmt.Errorf("failed marshalling data to json: %w", err)
