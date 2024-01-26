@@ -67,7 +67,7 @@ func (s *Store) FileExists() (bool, error) {
 	}
 
 	if fi.IsDir() {
-		return false, fmt.Errorf("%s exists as a directory", configFile)
+		return false, fmt.Errorf("%s exists as a directory in %s", configFile, s.Path)
 	}
 
 	return true, nil
