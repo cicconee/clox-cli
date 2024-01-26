@@ -8,6 +8,11 @@ import (
 	"path/filepath"
 )
 
+const (
+	configDir  = ".clox"
+	configFile = "config.json"
+)
+
 // Store manage the configuration IO for the Clox CLI app.
 //
 // Store should be created by calling NewStore.
@@ -26,7 +31,7 @@ func NewStore() (*Store, error) {
 	}
 
 	return &Store{
-		Path: filepath.Join(homeDir, ".clox"),
+		Path: filepath.Join(homeDir, configDir),
 	}, nil
 }
 
@@ -46,12 +51,12 @@ func (s *Store) DirExists() (bool, error) {
 		return true, nil
 	}
 
-	return false, errors.New(".clox already exists as a file in home directory")
+	return false, fmt.Errorf("%s already exists as a file in home directory", configDir)
 }
 
 // FileExists checks if the "config.json" file exists within the Path of this Store.
 func (s *Store) FileExists() (bool, error) {
-	filePath := filepath.Join(s.Path, "config.json")
+	filePath := filepath.Join(s.Path, configFile)
 	fi, err := os.Stat(filePath)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -62,7 +67,7 @@ func (s *Store) FileExists() (bool, error) {
 	}
 
 	if fi.IsDir() {
-		return false, errors.New("config.json exists as a directory")
+		return false, fmt.Errorf("%s exists as a directory", configFile)
 	}
 
 	return true, nil
@@ -88,7 +93,7 @@ func (s *Store) Write(p WriteFileParams) error {
 		return fmt.Errorf("failed marshalling data to json: %w", err)
 	}
 
-	filePath := filepath.Join(s.Path, "config.json")
+	filePath := filepath.Join(s.Path, configFile)
 	if err := os.WriteFile(filePath, data, 0600); err != nil {
 		return fmt.Errorf("failed writing file %s: %w", filePath, err)
 	}
