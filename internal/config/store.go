@@ -85,9 +85,9 @@ type WriteFileParams struct {
 	APIToken string `json:"api_token"`
 }
 
-// Write will write the parameters to the config.json file. The config.json file will be
-// stored within the Path of this Store on the file system.
-func (s *Store) Write(p WriteFileParams) error {
+// WriteFile will write the parameters to the config.json file. The config.json file
+// will be stored within the Path of this Store on the file system.
+func (s *Store) WriteFile(p WriteFileParams) error {
 	data, err := json.Marshal(p)
 	if err != nil {
 		return fmt.Errorf("failed marshalling data to json: %w", err)

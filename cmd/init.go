@@ -51,7 +51,7 @@ var initCmd = &cobra.Command{
 			os.Exit(0)
 		}
 
-		err = store.Write(config.WriteFileParams{
+		err = store.WriteFile(config.WriteFileParams{
 			Password: prompt.Passowrd(),
 			APIToken: prompt.APIToken(),
 		})
