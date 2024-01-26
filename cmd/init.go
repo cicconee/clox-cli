@@ -24,13 +24,13 @@ var initCmd = &cobra.Command{
 	Short: "Set up the Clox CLI",
 	Args:  cobra.ExactArgs(0),
 	Run: func(cmd *cobra.Command, args []string) {
-		config, err := NewConfig()
+		store, err := NewStore()
 		if err != nil {
 			fmt.Printf("Error: Failed initializing the configuration: %v\n", err)
 			os.Exit(1)
 		}
 
-		exists, err := config.Exists()
+		exists, err := store.Exists()
 		if err != nil {
 			fmt.Printf("Error: %v\n", err)
 			os.Exit(1)
@@ -41,7 +41,7 @@ var initCmd = &cobra.Command{
 			os.Exit(0)
 		}
 
-		err = config.Write(WriteFileParams{
+		err = store.Write(WriteFileParams{
 			Password: Passowrd(),
 			APIToken: APIToken(),
 		})
@@ -103,32 +103,31 @@ func InString(msg string, dst *string) {
 	fmt.Scanln(dst)
 }
 
-// Config manages the configuration for the Clox CLI app. It ensures all the proper directories
-// and files are initialized. User configuration settings can be read with Config.
+// Store manage the configuration IO for the Clox CLI app.
 //
-// Config should only be initialized by calling NewConfig.
-type Config struct {
+// Store should be created by calling NewStore.
+type Store struct {
 	// The path to the .clox directory. Path will always be the path to the users directory
 	// with /.clox appended at the end.
 	Path string
 }
 
-// NewConfig creates a Config and sets to the Path to the users home directory with /.clox
-// appended to the end. If it cannot get the users home directory an error is returned.
-func NewConfig() (*Config, error) {
+// NewStore creates a Store and sets the Path to the users home directory joined with ".clox".
+// If it cannot get the users home directory an error is returned.
+func NewStore() (*Store, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return nil, fmt.Errorf("failed getting home directory: %w", err)
 	}
 
-	return &Config{
+	return &Store{
 		Path: filepath.Join(homeDir, ".clox"),
 	}, nil
 }
 
-// Exists checks if the Path of this Config exists on the operating system as a directory.
-func (c *Config) Exists() (bool, error) {
-	fi, err := os.Stat(c.Path)
+// Exists checks if the Path of this Store exists on the operating system as a directory.
+func (s *Store) Exists() (bool, error) {
+	fi, err := os.Stat(s.Path)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return false, nil
@@ -151,10 +150,10 @@ type WriteFileParams struct {
 }
 
 // Write will write the parameters to the config.json file. The config.json file will be
-// stored within the Path of this Config.
-func (c *Config) Write(p WriteFileParams) error {
-	if err := os.Mkdir(c.Path, 0700); err != nil {
-		return fmt.Errorf("failed creating directory %s: %w", c.Path, err)
+// stored within the Path of this Store on the file system.
+func (s *Store) Write(p WriteFileParams) error {
+	if err := os.Mkdir(s.Path, 0700); err != nil {
+		return fmt.Errorf("failed creating directory %s: %w", s.Path, err)
 	}
 
 	data, err := json.Marshal(p)
@@ -162,7 +161,7 @@ func (c *Config) Write(p WriteFileParams) error {
 		return fmt.Errorf("failed marshalling data to json: %w", err)
 	}
 
-	filePath := filepath.Join(c.Path, "config.json")
+	filePath := filepath.Join(s.Path, "config.json")
 	if err := os.WriteFile(filePath, data, 0600); err != nil {
 		return fmt.Errorf("failed writing file %s: %w", filePath, err)
 	}
