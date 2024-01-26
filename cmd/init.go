@@ -42,8 +42,8 @@ var initCmd = &cobra.Command{
 		}
 
 		err = config.Write(WriteFileParams{
-			Password: APIToken(),
-			APIToken: Passowrd(),
+			Password: Passowrd(),
+			APIToken: APIToken(),
 		})
 		if err != nil {
 			fmt.Printf("Error: %v\n", err)
