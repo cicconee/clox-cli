@@ -30,7 +30,7 @@ var initCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		exists, err := store.Exists()
+		exists, err := store.DirExists()
 		if err != nil {
 			fmt.Printf("Error: %v\n", err)
 			os.Exit(1)
@@ -125,8 +125,9 @@ func NewStore() (*Store, error) {
 	}, nil
 }
 
-// Exists checks if the Path of this Store exists on the operating system as a directory.
-func (s *Store) Exists() (bool, error) {
+// DirExists checks if the ".clox" directory exists on the file system. The path to the
+// ".clox" directory is the value of this Store's Path value.
+func (s *Store) DirExists() (bool, error) {
 	fi, err := os.Stat(s.Path)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
