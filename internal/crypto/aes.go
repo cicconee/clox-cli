@@ -40,7 +40,8 @@ func (a *AES) EncryptWithPassword(data []byte, password []byte) ([]byte, error) 
 		return nil, err
 	}
 
-	return gcm.Seal(nonce, nonce, data, nil), nil
+	encrypted := gcm.Seal(nonce, nonce, data, nil)
+	return append(salt, encrypted...), nil
 }
 
 // DecryptWithPassword decrypts data using the password. The salt and password
