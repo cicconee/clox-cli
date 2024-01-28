@@ -2,12 +2,17 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/cicconee/clox-cli/internal/config"
 	"github.com/cicconee/clox-cli/internal/crypto"
 	"github.com/cicconee/clox-cli/internal/security"
 	"github.com/spf13/cobra"
 )
+
+// The storage for persisting the Clox CLI configuration. It is initialized before executing
+// any commands.
+var store *config.Store
 
 // The user of Clox CLI. It is initialized in the rootCmd when running commands that require
 // user authentication.
@@ -47,6 +52,14 @@ func init() {
 }
 
 func Execute() {
+	s, err := config.NewStore()
+	if err != nil {
+		fmt.Printf("Error: Failed initializing the configuration: %v\n", err)
+		os.Exit(1)
+	}
+
+	store = s
+
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Printf("\n[ERROR] %v\n", err)
 	}

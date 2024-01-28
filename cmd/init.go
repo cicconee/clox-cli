@@ -20,12 +20,6 @@ var initCmd = &cobra.Command{
 	Short: "Set up the Clox CLI",
 	Args:  cobra.ExactArgs(0),
 	Run: func(cmd *cobra.Command, args []string) {
-		store, err := config.NewStore()
-		if err != nil {
-			fmt.Printf("Error: Failed initializing the configuration: %v\n", err)
-			os.Exit(1)
-		}
-
 		exists, err := store.DirExists()
 		if err != nil {
 			fmt.Printf("Error: %v\n", err)
