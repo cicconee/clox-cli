@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/cicconee/clox-cli/internal/config"
+	"github.com/cicconee/clox-cli/internal/crypto"
 	"github.com/cicconee/clox-cli/internal/security"
 	"github.com/spf13/cobra"
 )
@@ -12,8 +13,11 @@ import (
 // user authentication.
 var user *config.User
 
+// Handles the AES encryption logic.
+var aes = &crypto.AES{}
+
 // The key manager for the users public-private key pairs.
-var keys = &security.Keys{}
+var keys = &security.Keys{AES: aes}
 
 // The root command of Clox CLI.
 var rootCmd = &cobra.Command{

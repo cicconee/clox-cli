@@ -1,17 +1,13 @@
 package security
 
 import (
-	"crypto/aes"
-	"crypto/cipher"
 	"crypto/rand"
 	"crypto/rsa"
-	"crypto/sha256"
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
-	"io"
 
-	"golang.org/x/crypto/pbkdf2"
+	"github.com/cicconee/clox-cli/internal/crypto"
 )
 
 // Keys manages the RSA (Rivest–Shamir–Adleman) key pairs.
@@ -19,7 +15,9 @@ import (
 // The RSA key pairs are encrypted using the AES (Advanced Encryption Standard) with
 // GCM (Galois/Counter Mode). This allows for the RSA private key to be encrypted and
 // decrypted with a password.
-type Keys struct{}
+type Keys struct {
+	AES *crypto.AES
+}
 
 // GenerateWithPassword generates a password-encrypted RSA key pair. Only the private
 // key is password protected. The first []byte returned is the private key, the second
@@ -30,7 +28,7 @@ func (k *Keys) GenerateWithPassword(password string) ([]byte, []byte, error) {
 		return nil, nil, err
 	}
 
-	privKeyEncryted, err := encryptPrivateKey(privKey, password)
+	privKeyEncryted, err := k.encryptPrivateKey(privKey, password)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -41,6 +39,17 @@ func (k *Keys) GenerateWithPassword(password string) ([]byte, []byte, error) {
 	return privKeyEncryted, pubKeyPEM, nil
 }
 
+// encryptPrivateKey encrypts the private key with the password.
+func (k *Keys) encryptPrivateKey(priv *rsa.PrivateKey, password string) ([]byte, error) {
+	privBytes := x509.MarshalPKCS1PrivateKey(priv)
+	encrypted, err := k.AES.EncryptWithPassword(privBytes, privBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return encodePEM("RSA PRIVATE KEY", encrypted), nil
+}
+
 // DecryptPrivateKey decrypts the key with password and returns it as a *rsa.PrivateKey.
 func (k *Keys) DecryptPrivateKey(encryptedKey, password string) (*rsa.PrivateKey, error) {
 	block, _ := pem.Decode([]byte(encryptedKey))
@@ -48,33 +57,12 @@ func (k *Keys) DecryptPrivateKey(encryptedKey, password string) (*rsa.PrivateKey
 		return nil, errors.New("failed to decode PEM block containing encrypted key")
 	}
 
-	// Assuming the first 16 bytes are the salt
-	salt := block.Bytes[:16]
-	encryptedData := block.Bytes[16:]
-
-	key := pbkdf2.Key([]byte(password), salt, 4096, 32, sha256.New)
-	blockCipher, err := aes.NewCipher(key)
+	decrypted, err := k.AES.DecryptWithPassword(block.Bytes, []byte(password))
 	if err != nil {
 		return nil, err
 	}
 
-	gcm, err := cipher.NewGCM(blockCipher)
-	if err != nil {
-		return nil, err
-	}
-
-	nonceSize := gcm.NonceSize()
-	if len(encryptedData) < nonceSize {
-		return nil, errors.New("ciphertext too short")
-	}
-
-	nonce, ciphertext := encryptedData[:nonceSize], encryptedData[nonceSize:]
-	decryptedData, err := gcm.Open(nil, nonce, ciphertext, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	privKey, err := x509.ParsePKCS1PrivateKey(decryptedData)
+	privKey, err := x509.ParsePKCS1PrivateKey(decrypted)
 	if err != nil {
 		return nil, err
 	}
@@ -95,35 +83,6 @@ func (k *Keys) DecodePublicKey(encodedKey []byte) (*rsa.PublicKey, error) {
 // generateRSAKeyPair generates a RSA key pair.
 func generateRSAKeyPair() (*rsa.PrivateKey, error) {
 	return rsa.GenerateKey(rand.Reader, 2048)
-}
-
-// encryptPrivateKey encrypts the private key with the password.
-func encryptPrivateKey(priv *rsa.PrivateKey, password string) ([]byte, error) {
-	privBytes := x509.MarshalPKCS1PrivateKey(priv)
-	salt := make([]byte, 16)
-	if _, err := io.ReadFull(rand.Reader, salt); err != nil {
-		return nil, err
-	}
-
-	key := pbkdf2.Key([]byte(password), salt, 4096, 32, sha256.New)
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return nil, err
-	}
-
-	gcm, err := cipher.NewGCM(block)
-	if err != nil {
-		return nil, err
-	}
-
-	nonce := make([]byte, gcm.NonceSize())
-	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
-		return nil, err
-	}
-
-	encrypted := gcm.Seal(nonce, nonce, privBytes, nil)
-
-	return encodePEM("RSA PRIVATE KEY", append(salt, encrypted...)), nil
 }
 
 // encodePEM encodes a pem.Block. The returned []byte is the ideal format for storing the data.
