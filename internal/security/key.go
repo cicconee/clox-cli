@@ -14,7 +14,11 @@ import (
 	"golang.org/x/crypto/pbkdf2"
 )
 
-// Keys manages the RSA key pairs.
+// Keys manages the RSA (Rivest–Shamir–Adleman) key pairs.
+//
+// The RSA key pairs are encrypted using the AES (Advanced Encryption Standard) with
+// GCM (Galois/Counter Mode). This allows for the RSA private key to be encrypted and
+// decrypted with a password.
 type Keys struct{}
 
 // GenerateWithPassword generates a password-encrypted RSA key pair. Only the private
