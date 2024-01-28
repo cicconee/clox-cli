@@ -14,9 +14,7 @@ import (
 // initCmd will initialize and set up the Clox CLI configuration.
 //
 // TODO:
-//   - Create private and public key.
-//   - Hash the password
-//   - Encrypt the api token, private key, and public key with password
+//   - Encrypt the api token with password.
 var initCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Set up the Clox CLI",
@@ -51,11 +49,12 @@ var initCmd = &cobra.Command{
 			os.Exit(0)
 		}
 
-		err = store.WriteFile(config.WriteFileParams{
-			Password: prompt.Passowrd(),
-			APIToken: prompt.APIToken(),
-		})
+		user, err = config.NewUser(keys, prompt.Passowrd(), prompt.APIToken())
 		if err != nil {
+			fmt.Printf("Error: %v\n", err)
+			os.Exit(1)
+		}
+		if err := store.WriteConfigFile(user); err != nil {
 			fmt.Printf("Error: %v\n", err)
 			os.Exit(1)
 		}

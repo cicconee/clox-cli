@@ -3,8 +3,17 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/cicconee/clox-cli/internal/config"
+	"github.com/cicconee/clox-cli/internal/security"
 	"github.com/spf13/cobra"
 )
+
+// The user of Clox CLI. It is initialized in the rootCmd when running commands that require
+// user authentication.
+var user *config.User
+
+// The key manager for the users public-private key pairs.
+var keys = &security.Keys{}
 
 // The root command of Clox CLI.
 var rootCmd = &cobra.Command{

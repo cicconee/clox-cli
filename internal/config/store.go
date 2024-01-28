@@ -79,16 +79,10 @@ func (s *Store) WriteDir() error {
 	return os.Mkdir(s.Path, 0700)
 }
 
-// The parameters when writing the config.json file.
-type WriteFileParams struct {
-	Password string `json:"password"`
-	APIToken string `json:"api_token"`
-}
-
-// WriteFile will write the parameters to the config.json file. The config.json file
-// will be stored within the Path of this Store on the file system.
-func (s *Store) WriteFile(p WriteFileParams) error {
-	data, err := json.Marshal(p)
+// WriteConfigFile marshalls the json.Marshaler and writes the result to a file "config.json".
+// The file is stored within the Path of this Store.
+func (s *Store) WriteConfigFile(d json.Marshaler) error {
+	data, err := d.MarshalJSON()
 	if err != nil {
 		return fmt.Errorf("failed marshalling data to json: %w", err)
 	}
