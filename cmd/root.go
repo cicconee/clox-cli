@@ -67,6 +67,13 @@ func (c *RootCommand) AddCommandSetter(cs CommandSetter) {
 
 // PersistentPreRun is the PersistentPreRun of the cobra.Command in this
 // RootCommand.
+//
+// Every command except the 'init' command, is passed a config.User that is created
+// in this function. If creating a user returns an error, the error is printed and
+// the program exits.
+//
+// The 'init' command is special, as it does not rely on a config.User. Instead it
+// validates that a config.User has been configured, if it isn't, it configures one.
 func (c *RootCommand) PersistentPreRun(cmd *cobra.Command, args []string) {
 	if cmd.Name() != "init" {
 		user := &config.User{}
