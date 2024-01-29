@@ -6,54 +6,85 @@ import (
 
 	"github.com/cicconee/clox-cli/internal/config"
 	"github.com/cicconee/clox-cli/internal/prompt"
+	"github.com/cicconee/clox-cli/internal/security"
 	"github.com/spf13/cobra"
 )
 
-// The 'init' command.
+// InitCommand is the 'init' command.
 //
-// initCmd will initialize and set up the Clox CLI configuration.
+// InitCommand will create the user configuration and write it to the config file.
 //
 // TODO:
 //   - Encrypt the api token with password.
-var initCmd = &cobra.Command{
-	Use:   "init",
-	Short: "Set up the Clox CLI",
-	Args:  cobra.ExactArgs(0),
-	Run: func(cmd *cobra.Command, args []string) {
-		exists, err := store.DirExists()
+type InitCommand struct {
+	cmd   *cobra.Command
+	store *config.Store
+	keys  *security.Keys
+	user  *config.User
+	force bool
+}
+
+// NewInitCommand creates and returns a InitCommand.
+//
+// A force flag '-f', is set for the InitCommand. This flag allows users to overwrite
+// their current configuration if already set.
+func NewInitCommand(store *config.Store, keys *security.Keys) *InitCommand {
+	initCmd := &InitCommand{store: store, keys: keys}
+
+	initCmd.cmd = &cobra.Command{
+		Use:   "init",
+		Short: "Set up the Clox CLI",
+		Args:  cobra.ExactArgs(0),
+		Run:   initCmd.Run,
+	}
+
+	initCmd.cmd.Flags().BoolVarP(&initCmd.force, "force", "f", false, "Overwrites current configuration")
+
+	return initCmd
+}
+
+// Command returns the cobra.Command of this InitCommand.
+func (c *InitCommand) Command() *cobra.Command {
+	return c.cmd
+}
+
+// Run is the Run function of the cobra.Command in this InitCommand.
+//
+// Run will create a user and write it to the configuration file. If the
+// configuration directory does not exist it will create it. If the user is already
+// configured, it will print a message stating Clox CLI is already set up.
+func (c *InitCommand) Run(cmd *cobra.Command, args []string) {
+	dirExists, err := c.store.DirExists()
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+		os.Exit(1)
+	}
+	if !dirExists {
+		err := c.store.WriteDir()
 		if err != nil {
 			fmt.Printf("Error: %v\n", err)
 			os.Exit(1)
 		}
-		if !exists {
-			err := store.WriteDir()
-			if err != nil {
-				fmt.Printf("Error: %v\n", err)
-				os.Exit(1)
-			}
-		}
+	}
 
-		fileExists, err := store.FileExists()
-		if err != nil {
-			fmt.Printf("Error: %v\n", err)
-			os.Exit(1)
-		}
-		if fileExists {
-			fmt.Println("Clox CLI already initialized")
-			os.Exit(0)
-		}
-
-		user, err = config.NewUser(keys, prompt.Passowrd(), prompt.APIToken())
-		if err != nil {
-			fmt.Printf("Error: %v\n", err)
-			os.Exit(1)
-		}
-		if err := store.WriteConfigFile(user); err != nil {
-			fmt.Printf("Error: %v\n", err)
-			os.Exit(1)
-		}
-
-		fmt.Println("Success")
+	user := &config.User{}
+	err = c.store.ReadConfigFile(user)
+	if err == nil && !c.force {
+		fmt.Println("Clox CLI already configured")
+		fmt.Println("Run 'clox init -f' to force initialize")
 		os.Exit(0)
-	},
+	}
+
+	user, err = config.NewUser(c.keys, prompt.Passowrd(), prompt.APIToken())
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+		os.Exit(1)
+	}
+	if err := c.store.WriteConfigFile(user); err != nil {
+		fmt.Printf("Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Println("Success")
+	os.Exit(0)
 }

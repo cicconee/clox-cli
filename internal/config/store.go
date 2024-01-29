@@ -13,6 +13,8 @@ const (
 	configFile = "config.json"
 )
 
+var ErrEmptyConfigFile = errors.New("config file is empty")
+
 // Store manage the configuration IO for the Clox CLI app.
 //
 // Store should be created by calling NewStore.
@@ -93,4 +95,21 @@ func (s *Store) WriteConfigFile(d json.Marshaler) error {
 	}
 
 	return nil
+}
+
+// ReadConfigFile reads the configuration file and unmarshalls the data into dst.
+//
+// If the file is empty it wont unmarshal the data and return ErrEmptyConfigFile.
+func (s *Store) ReadConfigFile(dst json.Unmarshaler) error {
+	filePath := filepath.Join(s.Path, configFile)
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return err
+	}
+
+	if len(data) == 0 {
+		return ErrEmptyConfigFile
+	}
+
+	return dst.UnmarshalJSON(data)
 }

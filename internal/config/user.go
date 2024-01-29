@@ -3,10 +3,13 @@ package config
 import (
 	"crypto/rsa"
 	"encoding/json"
+	"errors"
 
 	"github.com/cicconee/clox-cli/internal/security"
 	"golang.org/x/crypto/bcrypt"
 )
+
+var ErrUnsetUser = errors.New("user not configured")
 
 // User manages the user configuration values.
 type User struct {
@@ -38,6 +41,28 @@ func NewUser(k *security.Keys, password string, apiToken string) (*User, error) 
 		encryptedPrivateKey: string(priv),
 		publicKey:           string(pub),
 	}, nil
+}
+
+// Validate validates that the user is completely configured. If any fields are not
+// set it will return an error stating the field that is not set.
+func (u *User) Validate() error {
+	if u.passwordHash == "" {
+		return errors.New("empty password")
+	}
+
+	if u.encryptedAPIToken == "" {
+		return errors.New("empty api token")
+	}
+
+	if u.encryptedPrivateKey == "" {
+		return errors.New("empty private key")
+	}
+
+	if u.publicKey == "" {
+		return errors.New("empty public key")
+	}
+
+	return nil
 }
 
 // VerifyPassword verifies if the password is correct. An error is returned if the password
