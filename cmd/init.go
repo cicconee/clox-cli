@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/cicconee/clox-cli/internal/config"
+	"github.com/cicconee/clox-cli/internal/crypto"
 	"github.com/cicconee/clox-cli/internal/prompt"
 	"github.com/cicconee/clox-cli/internal/security"
 	"github.com/spf13/cobra"
@@ -13,13 +14,11 @@ import (
 // InitCommand is the 'init' command.
 //
 // InitCommand will create the user configuration and write it to the config file.
-//
-// TODO:
-//   - Encrypt the api token with password.
 type InitCommand struct {
 	cmd   *cobra.Command
 	store *config.Store
 	keys  *security.Keys
+	aes   *crypto.AES
 	user  *config.User
 	force bool
 }
@@ -28,8 +27,8 @@ type InitCommand struct {
 //
 // A force flag '-f', is set for the InitCommand. This flag allows users to overwrite
 // their current configuration if already set.
-func NewInitCommand(store *config.Store, keys *security.Keys) *InitCommand {
-	initCmd := &InitCommand{store: store, keys: keys}
+func NewInitCommand(store *config.Store, keys *security.Keys, aes *crypto.AES) *InitCommand {
+	initCmd := &InitCommand{store: store, keys: keys, aes: aes}
 
 	initCmd.cmd = &cobra.Command{
 		Use:   "init",
@@ -77,6 +76,7 @@ func (c *InitCommand) Run(cmd *cobra.Command, args []string) {
 
 	user, err = config.NewUser(
 		c.keys,
+		c.aes,
 		prompt.ConfigurePassowrd(),
 		prompt.ConfigureAPIToken())
 	if err != nil {

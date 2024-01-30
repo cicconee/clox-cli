@@ -118,10 +118,11 @@ func Execute() {
 		os.Exit(1)
 	}
 
-	keys := &security.Keys{AES: &crypto.AES{}}
+	aes := &crypto.AES{}
+	keys := &security.Keys{AES: aes}
 
 	root := NewRootCommand(s)
-	root.AddCommand(NewInitCommand(s, keys))
+	root.AddCommand(NewInitCommand(s, keys, aes))
 	root.AddUserCommand(NewMkdirCommand(keys))
 
 	if err := root.cmd.Execute(); err != nil {

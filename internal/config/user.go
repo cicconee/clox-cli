@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 
+	"github.com/cicconee/clox-cli/internal/crypto"
 	"github.com/cicconee/clox-cli/internal/security"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -24,7 +25,7 @@ type User struct {
 //
 // TODO:
 //   - Encrypt the api token with the users password.
-func NewUser(k *security.Keys, password string, apiToken string) (*User, error) {
+func NewUser(k *security.Keys, aes *crypto.AES, password string, apiToken string) (*User, error) {
 	priv, pub, err := k.GenerateWithPassword(password)
 	if err != nil {
 		return nil, err
@@ -35,9 +36,14 @@ func NewUser(k *security.Keys, password string, apiToken string) (*User, error) 
 		return nil, err
 	}
 
+	encryptedAPIToken, err := aes.EncryptWithPassword([]byte(apiToken), []byte(password))
+	if err != nil {
+		return nil, err
+	}
+
 	return &User{
 		passwordHash:        string(hashedPassword),
-		encryptedAPIToken:   apiToken,
+		encryptedAPIToken:   string(encryptedAPIToken),
 		encryptedPrivateKey: string(priv),
 		publicKey:           string(pub),
 	}, nil
