@@ -85,6 +85,16 @@ func (u *User) RSAPublicKey(keys *security.Keys) (*rsa.PublicKey, error) {
 	return keys.DecodePublicKey([]byte(u.publicKey))
 }
 
+// APIToken decrypts this User's encrypted API token.
+func (u *User) APIToken(aes *crypto.AES, password string) (string, error) {
+	token, err := aes.DecryptWithPassword([]byte(u.encryptedAPIToken), []byte(password))
+	if err != nil {
+		return "", err
+	}
+
+	return string(token), nil
+}
+
 // hash hashes the password.
 func hash(password string) ([]byte, error) {
 	return bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
