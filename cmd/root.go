@@ -16,8 +16,8 @@ type Command interface {
 	Command() *cobra.Command
 }
 
-// CommandSetter is the interface that wraps the Command and SetUser functions.
-type CommandSetter interface {
+// UserCommand is the interface that wraps the Command and SetUser functions.
+type UserCommand interface {
 	Command
 
 	// SetUser sets the config.User for a command.
@@ -28,14 +28,14 @@ type CommandSetter interface {
 type RootCommand struct {
 	store   *config.Store
 	cmd     *cobra.Command
-	subCmds map[string]CommandSetter
+	subCmds map[string]UserCommand
 }
 
 // NewRootCommand creates and returns a RootCommand.
 func NewRootCommand(store *config.Store) *RootCommand {
 	rootCmd := &RootCommand{
 		store:   store,
-		subCmds: map[string]CommandSetter{},
+		subCmds: map[string]UserCommand{},
 	}
 
 	rootCmd.cmd = &cobra.Command{
@@ -54,15 +54,15 @@ func (c *RootCommand) AddCommand(cmd Command) {
 }
 
 // AddCommand adds a *cobra.Command to this RootCommand and sets
-// the CommandSetter in the subCmds map.
+// the UserCommand in the subCmds map.
 //
 // The PersistentPreRun will initialize variables that are used through out all the
 // sub commands of this RootCommand. Only commands set with this method will be
 // passed these variables. This method is what enables global-free variables.
-func (c *RootCommand) AddCommandSetter(cs CommandSetter) {
-	cmd := cs.Command()
+func (c *RootCommand) AddUserCommand(uc UserCommand) {
+	cmd := uc.Command()
 	c.cmd.AddCommand(cmd)
-	c.subCmds[cmd.Name()] = cs
+	c.subCmds[cmd.Name()] = uc
 }
 
 // PersistentPreRun is the PersistentPreRun of the cobra.Command in this
@@ -99,7 +99,7 @@ func Execute() {
 
 	root := NewRootCommand(s)
 	root.AddCommand(NewInitCommand(s, keys))
-	root.AddCommandSetter(NewMkdirCommand(keys))
+	root.AddUserCommand(NewMkdirCommand(keys))
 
 	if err := root.cmd.Execute(); err != nil {
 		fmt.Printf("\n[ERROR] %v\n", err)
