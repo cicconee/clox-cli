@@ -12,6 +12,12 @@ func InString(msg string, dst *string) {
 	fmt.Scanln(dst)
 }
 
+func Password() string {
+	var password string
+	InString("Password", &password)
+	return password
+}
+
 // ConfigureAPIToken will prompt the user to enter an API token. If an empty value is
 // entered, it will loop until user enters a value. Once a valid API token is
 // entered, it will return it.
