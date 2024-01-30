@@ -18,14 +18,17 @@ type Command interface {
 	Command() *cobra.Command
 }
 
-// UserCommand is the interface that wraps the Command and SetUser functions.
+// UserCommand is the interface that wraps the Command, SetUser, and SetPassword
+// functions.
 type UserCommand interface {
 	Command
 
-	// SetUser sets the config.User for a command.
+	// SetUser sets the config.User for a command that was read from the
+	// configuration file in the RootCommand's PersistentPreRun function.
 	SetUser(*config.User)
 
-	// SetPassword sets the password for a command.
+	// SetPassword sets the password for a command that was entered in the
+	// RootCommand's PersistentPreRun function.
 	SetPassword(string)
 }
 
