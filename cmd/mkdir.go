@@ -17,10 +17,11 @@ import (
 // TODO:
 //   - Call Clox API endpoint to create directory.
 type MkdirCommand struct {
-	cmd  *cobra.Command
-	user *config.User
-	keys *security.Keys
-	path string
+	cmd      *cobra.Command
+	user     *config.User
+	password string
+	keys     *security.Keys
+	path     string
 }
 
 // NewInitCommand creates and returns a InitCommand.
@@ -51,6 +52,10 @@ func (c *MkdirCommand) SetUser(user *config.User) {
 	c.user = user
 }
 
+func (c *MkdirCommand) SetPassword(password string) {
+	c.password = password
+}
+
 // Run is the Run function of the cobra.Command in this InitCommand.
 //
 // Run will create a user and write it to the configuration file. If the
@@ -60,5 +65,6 @@ func (c *MkdirCommand) Run(cmd *cobra.Command, args []string) {
 	fmt.Println("User:", c.user)
 	fmt.Println("Dir Name:", args[0])
 	fmt.Println("Path:", c.path)
+	fmt.Println("Password:", c.password)
 	os.Exit(0)
 }

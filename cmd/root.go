@@ -6,6 +6,7 @@ import (
 
 	"github.com/cicconee/clox-cli/internal/config"
 	"github.com/cicconee/clox-cli/internal/crypto"
+	"github.com/cicconee/clox-cli/internal/prompt"
 	"github.com/cicconee/clox-cli/internal/security"
 	"github.com/spf13/cobra"
 )
@@ -22,6 +23,9 @@ type UserCommand interface {
 
 	// SetUser sets the config.User for a command.
 	SetUser(*config.User)
+
+	// SetPassword sets the password for a command.
+	SetPassword(string)
 }
 
 // The root command of Clox CLI.
@@ -72,6 +76,10 @@ func (c *RootCommand) AddUserCommand(uc UserCommand) {
 // in this function. If creating a user returns an error, the error is printed and
 // the program exits.
 //
+// Every command except the 'init' command, is passed a password. This function will
+// prompt the user for a password and validate it against the password hash. If
+// validation fails the program will exit.
+//
 // The 'init' command is special, as it does not rely on a config.User. Instead it
 // validates that a config.User has been configured, if it isn't, it configures one.
 func (c *RootCommand) PersistentPreRun(cmd *cobra.Command, args []string) {
@@ -83,7 +91,15 @@ func (c *RootCommand) PersistentPreRun(cmd *cobra.Command, args []string) {
 			os.Exit(1)
 		}
 
-		c.subCmds[cmd.Name()].SetUser(user)
+		password := prompt.Password()
+		if err := user.VerifyPassword(password); err != nil {
+			fmt.Println("Invalid password")
+			os.Exit(0)
+		}
+
+		subCmd := c.subCmds[cmd.Name()]
+		subCmd.SetUser(user)
+		subCmd.SetPassword(password)
 	}
 }
 
