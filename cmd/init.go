@@ -19,7 +19,6 @@ type InitCommand struct {
 	store *config.Store
 	keys  *security.Keys
 	aes   *crypto.AES
-	user  *config.User
 	force bool
 }
 
