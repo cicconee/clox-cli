@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -87,6 +88,12 @@ func (c *RootCommand) PersistentPreRun(cmd *cobra.Command, args []string) {
 		user := &config.User{}
 		err := c.store.ReadConfigFile(user)
 		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				fmt.Println("Clox CLI not configured")
+				fmt.Println("Run 'clox init' to configure the CLI")
+				os.Exit(0)
+			}
+
 			fmt.Println("Error:", err)
 			os.Exit(1)
 		}
