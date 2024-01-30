@@ -2,6 +2,7 @@ package config
 
 import (
 	"crypto/rsa"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 
@@ -40,7 +41,7 @@ func NewUser(k *security.Keys, aes *crypto.AES, password string, apiToken string
 
 	return &User{
 		passwordHash:        string(hashedPassword),
-		encryptedAPIToken:   string(encryptedAPIToken),
+		encryptedAPIToken:   base64.StdEncoding.EncodeToString(encryptedAPIToken),
 		encryptedPrivateKey: string(priv),
 		publicKey:           string(pub),
 	}, nil
@@ -87,7 +88,12 @@ func (u *User) RSAPublicKey(keys *security.Keys) (*rsa.PublicKey, error) {
 
 // APIToken decrypts this User's encrypted API token.
 func (u *User) APIToken(aes *crypto.AES, password string) (string, error) {
-	token, err := aes.DecryptWithPassword([]byte(u.encryptedAPIToken), []byte(password))
+	decoded, err := base64.StdEncoding.DecodeString(u.encryptedAPIToken)
+	if err != nil {
+		return "", err
+	}
+
+	token, err := aes.DecryptWithPassword(decoded, []byte(password))
 	if err != nil {
 		return "", err
 	}
