@@ -123,7 +123,7 @@ func Execute() {
 
 	root := NewRootCommand(s)
 	root.AddCommand(NewInitCommand(s, keys, aes))
-	root.AddUserCommand(NewMkdirCommand(keys))
+	root.AddUserCommand(NewMkdirCommand(keys, aes))
 
 	if err := root.cmd.Execute(); err != nil {
 		fmt.Printf("\n[ERROR] %v\n", err)

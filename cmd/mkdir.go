@@ -68,5 +68,14 @@ func (c *MkdirCommand) Run(cmd *cobra.Command, args []string) {
 	fmt.Println("Dir Name:", args[0])
 	fmt.Println("Path:", c.path)
 	fmt.Println("Password:", c.password)
+
+	token, err := c.user.APIToken(c.aes, c.password)
+	if err != nil {
+		fmt.Println("Error:", err)
+		os.Exit(1)
+	}
+
+	fmt.Println("Token:", token)
+
 	os.Exit(0)
 }
