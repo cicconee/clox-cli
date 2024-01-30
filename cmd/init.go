@@ -75,7 +75,10 @@ func (c *InitCommand) Run(cmd *cobra.Command, args []string) {
 		os.Exit(0)
 	}
 
-	user, err = config.NewUser(c.keys, prompt.Passowrd(), prompt.APIToken())
+	user, err = config.NewUser(
+		c.keys,
+		prompt.ConfigurePassowrd(),
+		prompt.ConfigureAPIToken())
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
 		os.Exit(1)
