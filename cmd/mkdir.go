@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/cicconee/clox-cli/internal/config"
+	"github.com/cicconee/clox-cli/internal/crypto"
 	"github.com/cicconee/clox-cli/internal/security"
 	"github.com/spf13/cobra"
 )
@@ -21,6 +22,7 @@ type MkdirCommand struct {
 	user     *config.User
 	password string
 	keys     *security.Keys
+	aes      *crypto.AES
 	path     string
 }
 
@@ -28,8 +30,8 @@ type MkdirCommand struct {
 //
 // A force flag '-f', is set for the InitCommand. This flag allows users to overwrite
 // their current configuration if already set.
-func NewMkdirCommand(keys *security.Keys) *MkdirCommand {
-	mkdirCmd := &MkdirCommand{keys: keys}
+func NewMkdirCommand(keys *security.Keys, aes *crypto.AES) *MkdirCommand {
+	mkdirCmd := &MkdirCommand{keys: keys, aes: aes}
 
 	mkdirCmd.cmd = &cobra.Command{
 		Use:   "mkdir <name>",
