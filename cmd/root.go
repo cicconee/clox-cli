@@ -99,6 +99,7 @@ func Execute() {
 
 	root := NewRootCommand(s)
 	root.AddCommand(NewInitCommand(s, keys))
+	root.AddCommandSetter(NewMkdirCommand(keys))
 
 	if err := root.cmd.Execute(); err != nil {
 		fmt.Printf("\n[ERROR] %v\n", err)
