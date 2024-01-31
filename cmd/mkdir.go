@@ -115,6 +115,11 @@ func (c *MkdirCommand) Run(cmd *cobra.Command, args []string) {
 	c.runPath(cmd, args)
 }
 
+// runID creates a directory using the id (-i, --id) flag.
+func (c *MkdirCommand) runID(cmd *cobra.Command, args []string) {
+	fmt.Println("Create directory using parent ID")
+}
+
 // runPath creates a directory using the path (-p, --path) flag.
 func (c *MkdirCommand) runPath(cmd *cobra.Command, args []string) {
 	token, err := c.user.APIToken(c.aes, c.password)
