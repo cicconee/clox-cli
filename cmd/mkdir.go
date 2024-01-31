@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/cicconee/clox-cli/internal/config"
@@ -114,131 +113,110 @@ func (e *APIError) Error() string {
 func (c *MkdirCommand) Run(cmd *cobra.Command, args []string) {
 	if c.path != "" && c.id != "" {
 		fmt.Println("Only one flag can be set: path (-p, --path) or id (-i, --id)")
-		os.Exit(0)
+		return
 	}
 
-	if c.path != "" {
-		c.runPath(cmd, args)
-	} else if c.id != "" {
-		c.runID(cmd, args)
+	token, err := c.user.APIToken(c.aes, c.password)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+
+	data := &NewDirRequest{Name: args[0]}
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		fmt.Println("Error: Marshal:", err)
+		return
+	}
+
+	var req *http.Request
+	var rErr error
+	if c.path != "" || (c.path == "" && c.id == "") {
+		req, rErr = c.newPathRequest(jsonData, token)
 	} else {
-		c.runPath(cmd, args)
+		req, rErr = c.newIDRequest(jsonData, token)
 	}
-}
-
-// runID creates a directory using the id (-i, --id) flag.
-func (c *MkdirCommand) runID(cmd *cobra.Command, args []string) {
-	token, err := c.user.APIToken(c.aes, c.password)
-	if err != nil {
-		fmt.Println("Error:", err)
-		os.Exit(1)
+	if rErr != nil {
+		fmt.Println("Error: Request:", rErr)
+		return
 	}
-
-	data := &NewDirRequest{Name: args[0]}
-	jsonData, err := json.Marshal(data)
-	if err != nil {
-		fmt.Println("Error: Marshal:", err)
-		os.Exit(1)
-	}
-
-	// Create the request, add the token to the authorization header, and set the
-	// "path" query parameter.
-	url := fmt.Sprintf("http://localhost:8081/api/dir/%s", c.id)
-	r, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
-	if err != nil {
-		fmt.Println("Error: Creating Request:", err)
-		os.Exit(1)
-	}
-	authHeader := fmt.Sprintf("Bearer %s", token)
-	r.Header.Set("Authorization", authHeader)
+	defer req.Body.Close()
 
 	// Create the HTTP client and do the request.
 	client := &http.Client{}
-	resp, err := client.Do(r)
+	res, err := client.Do(req)
 	if err != nil {
 		fmt.Println("Error: Sending Request:", err)
-		os.Exit(1)
+		return
 	}
+	defer res.Body.Close()
 
 	respData := &NewDirResponse{}
-	err = HandleResponse(resp, respData)
+	err = HandleResponse(res, respData)
 	if err != nil {
 		switch e := err.(type) {
 		case *APIError:
 			fmt.Printf("API Error [%d]: %s\n", e.StatusCode, e.Err)
-			fmt.Printf("-> Name: %s\n", args[0])
-			fmt.Printf("-> Parent ID: %s\n", c.id)
-			os.Exit(0)
+			fmt.Printf("-> [ARG] Name: %s\n", args[0])
+			fmt.Printf("-> [FLAG] Path: %s\n", c.path)
+			fmt.Printf("-> [FLAG] Parent ID: %s\n", c.id)
 		default:
 			fmt.Printf("Error: %v\n", err)
-			os.Exit(1)
 		}
+		return
 	}
 
-	fmt.Printf("API [%d]: Directory Created\n", resp.StatusCode)
+	fmt.Printf("API [%d]: Directory Created\n", res.StatusCode)
 	fmt.Printf("-> Name: %s\n", respData.DirName)
 	fmt.Printf("-> Path: %s\n", respData.DirPath)
 	fmt.Printf("-> ID: %s\n", respData.ID)
 	return
 }
 
-// runPath creates a directory using the path (-p, --path) flag.
-func (c *MkdirCommand) runPath(cmd *cobra.Command, args []string) {
-	token, err := c.user.APIToken(c.aes, c.password)
-	if err != nil {
-		fmt.Println("Error:", err)
-		os.Exit(1)
-	}
+func (c *MkdirCommand) newPathRequest(body []byte, token string) (*http.Request, error) {
+	return NewAuthRequest(AuthRequestParams{
+		Method: "POST",
+		URL:    "http://localhost:8081/api/dir",
+		Body:   body,
+		Token:  token,
+		Query:  map[string]string{"path": c.path},
+	})
+}
 
-	data := &NewDirRequest{Name: args[0]}
-	jsonData, err := json.Marshal(data)
-	if err != nil {
-		fmt.Println("Error: Marshal:", err)
-		os.Exit(1)
-	}
+func (c *MkdirCommand) newIDRequest(body []byte, token string) (*http.Request, error) {
+	return NewAuthRequest(AuthRequestParams{
+		Method: "POST",
+		URL:    fmt.Sprintf("http://localhost:8081/api/dir/%s", c.id),
+		Body:   body,
+		Token:  token,
+	})
+}
 
-	// Create the request, add the token to the authorization header, and set the
-	// "path" query parameter.
-	url := "http://localhost:8081/api/dir"
-	r, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+type AuthRequestParams struct {
+	Method string
+	URL    string
+	Body   []byte
+	Token  string
+	Query  map[string]string
+}
+
+func NewAuthRequest(p AuthRequestParams) (*http.Request, error) {
+	r, err := http.NewRequest(p.Method, p.URL, bytes.NewBuffer(p.Body))
 	if err != nil {
-		fmt.Println("Error: Creating Request:", err)
-		os.Exit(1)
+		return nil, err
 	}
-	authHeader := fmt.Sprintf("Bearer %s", token)
+	authHeader := fmt.Sprintf("Bearer %s", p.Token)
 	r.Header.Set("Authorization", authHeader)
-	q := r.URL.Query()
-	q.Set("path", c.path)
-	r.URL.RawQuery = q.Encode()
 
-	// Create the HTTP client and do the request.
-	client := &http.Client{}
-	resp, err := client.Do(r)
-	if err != nil {
-		fmt.Println("Error: Sending Request:", err)
-		os.Exit(1)
-	}
-
-	respData := &NewDirResponse{}
-	err = HandleResponse(resp, respData)
-	if err != nil {
-		switch e := err.(type) {
-		case *APIError:
-			fmt.Printf("API Error [%d]: %s\n", e.StatusCode, e.Err)
-			fmt.Printf("-> Name: %s\n", args[0])
-			fmt.Printf("-> Path: %s\n", c.path)
-			os.Exit(0)
-		default:
-			fmt.Printf("Error: %v\n", err)
-			os.Exit(1)
+	if p.Query != nil {
+		q := r.URL.Query()
+		for k, v := range p.Query {
+			q.Set(k, v)
 		}
+		r.URL.RawQuery = q.Encode()
 	}
 
-	fmt.Printf("API [%d]: Directory Created\n", resp.StatusCode)
-	fmt.Printf("-> Name: %s\n", respData.DirName)
-	fmt.Printf("-> Path: %s\n", respData.DirPath)
-	fmt.Printf("-> ID: %s\n", respData.ID)
-	return
+	return r, nil
 }
 
 // HandleResponse handles http.Response from the Clox API. A successful request will
