@@ -112,7 +112,18 @@ func (e *APIError) Error() string {
 // a directory by specifying the ID of the parent. If no flag is set, it will create
 // the directory using an empty path. This will default to the users root directory.
 func (c *MkdirCommand) Run(cmd *cobra.Command, args []string) {
-	c.runPath(cmd, args)
+	if c.path != "" && c.id != "" {
+		fmt.Println("Only one flag can be set: path (-p, --path) or id (-i, --id)")
+		os.Exit(0)
+	}
+
+	if c.path != "" {
+		c.runPath(cmd, args)
+	} else if c.id != "" {
+		c.runID(cmd, args)
+	} else {
+		c.runPath(cmd, args)
+	}
 }
 
 // runID creates a directory using the id (-i, --id) flag.
