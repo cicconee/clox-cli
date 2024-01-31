@@ -26,6 +26,7 @@ type MkdirCommand struct {
 	keys     *security.Keys
 	aes      *crypto.AES
 	path     string
+	id       string
 }
 
 // NewInitCommand creates and returns a InitCommand.
@@ -43,6 +44,7 @@ func NewMkdirCommand(keys *security.Keys, aes *crypto.AES) *MkdirCommand {
 	}
 
 	mkdirCmd.cmd.Flags().StringVarP(&mkdirCmd.path, "path", "p", "", "The path where the directory will be created")
+	mkdirCmd.cmd.Flags().StringVarP(&mkdirCmd.id, "id", "i", "", "The ID of the parent directory")
 
 	return mkdirCmd
 }
