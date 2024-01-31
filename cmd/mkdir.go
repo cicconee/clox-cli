@@ -156,9 +156,10 @@ func (c *MkdirCommand) Run(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	fmt.Printf("API [%d]: Directory Created", resp.StatusCode)
+	fmt.Printf("API [%d]: Directory Created\n", resp.StatusCode)
 	fmt.Printf("-> Name: %s\n", respData.DirName)
 	fmt.Printf("-> Path: %s\n", respData.DirPath)
+	fmt.Printf("-> ID: %s\n", respData.ID)
 	return
 }
 
