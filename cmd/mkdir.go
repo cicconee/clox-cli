@@ -102,12 +102,21 @@ func (e *APIError) Error() string {
 	return e.Err
 }
 
-// Run is the Run function of the cobra.Command in this InitCommand.
+// Run is the Run function of the cobra.Command in this MkdirCommand.
 //
-// Run will create a user and write it to the configuration file. If the
-// configuration directory does not exist it will create it. If the user is already
-// configured, it will print a message stating Clox CLI is already set up.
+// Run will create a new directory on the Clox server. The password is used to
+// decrypt the API token, and then calls the API endpoint to create a directory.
+//
+// If the path flag (-p, --path) is set it will create a directory by specifying
+// the path to the new directory. If the id flag (-i, --id) is set, it will create
+// a directory by specifying the ID of the parent. If no flag is set, it will create
+// the directory using an empty path. This will default to the users root directory.
 func (c *MkdirCommand) Run(cmd *cobra.Command, args []string) {
+	c.runPath(cmd, args)
+}
+
+// runPath creates a directory using the path (-p, --path) flag.
+func (c *MkdirCommand) runPath(cmd *cobra.Command, args []string) {
 	token, err := c.user.APIToken(c.aes, c.password)
 	if err != nil {
 		fmt.Println("Error:", err)
