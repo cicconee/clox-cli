@@ -128,7 +128,58 @@ func (c *MkdirCommand) Run(cmd *cobra.Command, args []string) {
 
 // runID creates a directory using the id (-i, --id) flag.
 func (c *MkdirCommand) runID(cmd *cobra.Command, args []string) {
-	fmt.Println("Create directory using parent ID")
+	token, err := c.user.APIToken(c.aes, c.password)
+	if err != nil {
+		fmt.Println("Error:", err)
+		os.Exit(1)
+	}
+
+	data := &NewDirRequest{Name: args[0]}
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		fmt.Println("Error: Marshal:", err)
+		os.Exit(1)
+	}
+
+	// Create the request, add the token to the authorization header, and set the
+	// "path" query parameter.
+	url := fmt.Sprintf("http://localhost:8081/api/dir/%s", c.id)
+	r, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		fmt.Println("Error: Creating Request:", err)
+		os.Exit(1)
+	}
+	authHeader := fmt.Sprintf("Bearer %s", token)
+	r.Header.Set("Authorization", authHeader)
+
+	// Create the HTTP client and do the request.
+	client := &http.Client{}
+	resp, err := client.Do(r)
+	if err != nil {
+		fmt.Println("Error: Sending Request:", err)
+		os.Exit(1)
+	}
+
+	respData := &NewDirResponse{}
+	err = HandleResponse(resp, respData)
+	if err != nil {
+		switch e := err.(type) {
+		case *APIError:
+			fmt.Printf("API Error [%d]: %s\n", e.StatusCode, e.Err)
+			fmt.Printf("-> Name: %s\n", args[0])
+			fmt.Printf("-> Parent ID: %s\n", c.id)
+			os.Exit(0)
+		default:
+			fmt.Printf("Error: %v\n", err)
+			os.Exit(1)
+		}
+	}
+
+	fmt.Printf("API [%d]: Directory Created\n", resp.StatusCode)
+	fmt.Printf("-> Name: %s\n", respData.DirName)
+	fmt.Printf("-> Path: %s\n", respData.DirPath)
+	fmt.Printf("-> ID: %s\n", respData.ID)
+	return
 }
 
 // runPath creates a directory using the path (-p, --path) flag.
