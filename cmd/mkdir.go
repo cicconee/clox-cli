@@ -130,9 +130,9 @@ func (c *MkdirCommand) Run(cmd *cobra.Command, args []string) {
 	var req *http.Request
 	var rErr error
 	if c.path != "" || (c.path == "" && c.id == "") {
-		req, rErr = c.newPathRequest(jsonData, token)
+		req, rErr = c.newPathRequest(bytes.NewBuffer(jsonData), token)
 	} else {
-		req, rErr = c.newIDRequest(jsonData, token)
+		req, rErr = c.newIDRequest(bytes.NewBuffer(jsonData), token)
 	}
 	if rErr != nil {
 		fmt.Println("Error: Request:", rErr)
@@ -171,7 +171,7 @@ func (c *MkdirCommand) Run(cmd *cobra.Command, args []string) {
 	return
 }
 
-func (c *MkdirCommand) newPathRequest(body []byte, token string) (*http.Request, error) {
+func (c *MkdirCommand) newPathRequest(body *bytes.Buffer, token string) (*http.Request, error) {
 	return NewAuthRequest(AuthRequestParams{
 		Method: "POST",
 		URL:    "http://localhost:8081/api/dir",
@@ -181,7 +181,7 @@ func (c *MkdirCommand) newPathRequest(body []byte, token string) (*http.Request,
 	})
 }
 
-func (c *MkdirCommand) newIDRequest(body []byte, token string) (*http.Request, error) {
+func (c *MkdirCommand) newIDRequest(body *bytes.Buffer, token string) (*http.Request, error) {
 	return NewAuthRequest(AuthRequestParams{
 		Method: "POST",
 		URL:    fmt.Sprintf("http://localhost:8081/api/dir/%s", c.id),
@@ -193,13 +193,13 @@ func (c *MkdirCommand) newIDRequest(body []byte, token string) (*http.Request, e
 type AuthRequestParams struct {
 	Method string
 	URL    string
-	Body   []byte
+	Body   *bytes.Buffer
 	Token  string
 	Query  map[string]string
 }
 
 func NewAuthRequest(p AuthRequestParams) (*http.Request, error) {
-	r, err := http.NewRequest(p.Method, p.URL, bytes.NewBuffer(p.Body))
+	r, err := http.NewRequest(p.Method, p.URL, p.Body)
 	if err != nil {
 		return nil, err
 	}
