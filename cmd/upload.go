@@ -1,7 +1,14 @@
 package cmd
 
 import (
+	"bytes"
 	"fmt"
+	"io"
+	"mime/multipart"
+	"net/http"
+	"os"
+	"strings"
+	"time"
 
 	"github.com/cicconee/clox-cli/internal/config"
 	"github.com/cicconee/clox-cli/internal/crypto"
@@ -62,6 +69,42 @@ func (c *UploadCommand) SetPassword(password string) {
 	c.password = password
 }
 
+// UploadFileResponse is the result of a successful file upload. Each
+// UploadFileResponse corresponds to a single file. This is a single entry within
+// UploadResponse.Uploads.
+type UploadFileResponse struct {
+	ID          string    `json:"id"`
+	OwnerID     string    `json:"owner_id"`
+	DirectoryID string    `json:"directory_id"`
+	Name        string    `json:"file_name"`
+	Path        string    `json:"file_path"`
+	Size        int64     `json:"file_size"`
+	UploadedAt  time.Time `json:"uploaded_at"`
+}
+
+// UploadErrorResponse is the result of a failed file upload. Each
+// UploadErrorResponse corresponds to a single file failure. This is a single
+// entry within UploadResponse.Errors.
+type UploadErrorResponse struct {
+	FileName string `json:"file_name"`
+	Size     int64  `json:"file_size"`
+	Error    string `json:"error"`
+}
+
+// UploadResponse is the response body of the POST request when uploading files.
+type UploadResponse struct {
+	Uploads []UploadFileResponse  `json:"uploads"`
+	Errors  []UploadErrorResponse `json:"errors"`
+}
+
+// UploadInput is the input for uploading a file. A UploadInput corresponds to a
+// single file to be uploaded with the 'upload' command.
+type UploadInput struct {
+	Index    int
+	Path     string
+	Filename string
+}
+
 // Run is the Run function of the cobra.Command in this UploadCommand.
 //
 // Run will upload files to the Clox server. Users specify the file to upload and
@@ -76,6 +119,90 @@ func (c *UploadCommand) SetPassword(password string) {
 // specified ID. If no flag is set, it will upload files using an empty path. This
 // will default to the users root directory.
 func (c *UploadCommand) Run(cmd *cobra.Command, args []string) {
-	fmt.Println("Upload files")
-	fmt.Println("Args:", args)
+	token, err := c.user.APIToken(c.aes, c.password)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+
+	// Parse the <file>:<name> args.
+	uploads := []UploadInput{}
+	for i, a := range args {
+		parts := strings.Split(a, ":")
+		if len(parts) != 2 {
+			fmt.Printf("Invalid syntax [Index: %d, Input: %s]: ", i, a)
+			fmt.Println("Must be in format <file>:<name>")
+			return
+		}
+		uploads = append(uploads, UploadInput{
+			Index:    i,
+			Path:     parts[0],
+			Filename: parts[1],
+		})
+	}
+
+	// Build the request body by reading each file on the file system into a
+	// form file.
+	var reqBody bytes.Buffer
+	multipartWriter := multipart.NewWriter(&reqBody)
+	for _, u := range uploads {
+		file, err := os.Open(u.Path)
+		if err != nil {
+			fmt.Printf("Error: Opening file [Path: %s, Index: %d]: %v", u.Path, u.Index, err)
+			return
+		}
+		defer file.Close()
+
+		formFile, err := multipartWriter.CreateFormFile("file_uploads", u.Filename)
+		if err != nil {
+			fmt.Printf("Error: Creating form file [Filename: %s, Index: %d]: %v", u.Filename, u.Index, err)
+			return
+		}
+
+		if _, err := io.Copy(formFile, file); err != nil {
+			fmt.Printf("Error: Copying file [Filename: %s, Index: %d]: %v", u.Filename, u.Index, err)
+			return
+		}
+	}
+	multipartWriter.Close()
+
+	// Build the request with the request body.
+	req, err := NewAuthRequest(AuthRequestParams{
+		Method: "POST",
+		URL:    "http://localhost:8081/api/upload",
+		Body:   &reqBody,
+		Token:  token,
+	})
+	if err != nil {
+		fmt.Println("Error: Request:", err)
+		return
+	}
+	defer req.Body.Close()
+	req.Header.Set("Content-Type", multipartWriter.FormDataContentType())
+
+	// Do the request and parse the response.
+	client := &http.Client{}
+	res, err := client.Do(req)
+	if err != nil {
+		fmt.Println("Error: Sending Request:", err)
+		return
+	}
+	defer res.Body.Close()
+
+	respData := UploadResponse{}
+	err = HandleResponse(res, &respData)
+	if err != nil {
+		switch e := err.(type) {
+		case *APIError:
+			fmt.Printf("API Error [%d]: %s\n", e.StatusCode, e.Err)
+			fmt.Printf("-> [ARG] Name: %s\n", args[0])
+			fmt.Printf("-> [FLAG] Path: %s\n", c.path)
+			fmt.Printf("-> [FLAG] Directory ID: %s\n", c.id)
+		default:
+			fmt.Printf("Error: %v\n", err)
+		}
+		return
+	}
+
+	fmt.Println(respData)
 }
