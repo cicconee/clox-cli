@@ -19,6 +19,7 @@ type InitCommand struct {
 	store *config.Store
 	keys  *security.Keys
 	aes   *crypto.AES
+	rsa   *crypto.RSA
 	force bool
 }
 
@@ -26,8 +27,8 @@ type InitCommand struct {
 //
 // A force flag '-f', is set for the InitCommand. This flag allows users to overwrite
 // their current configuration if already set.
-func NewInitCommand(store *config.Store, keys *security.Keys, aes *crypto.AES) *InitCommand {
-	initCmd := &InitCommand{store: store, keys: keys, aes: aes}
+func NewInitCommand(store *config.Store, keys *security.Keys, aes *crypto.AES, rsa *crypto.RSA) *InitCommand {
+	initCmd := &InitCommand{store: store, keys: keys, aes: aes, rsa: rsa}
 
 	initCmd.cmd = &cobra.Command{
 		Use:   "init",
@@ -76,6 +77,7 @@ func (c *InitCommand) Run(cmd *cobra.Command, args []string) {
 	user, err = config.NewUser(
 		c.keys,
 		c.aes,
+		c.rsa,
 		prompt.ConfigurePassowrd(),
 		prompt.ConfigureAPIToken())
 	if err != nil {

@@ -122,10 +122,11 @@ func Execute() {
 	}
 
 	aes := &crypto.AES{}
+	rsa := &crypto.RSA{}
 	keys := &security.Keys{AES: aes}
 
 	root := NewRootCommand(s)
-	root.AddCommand(NewInitCommand(s, keys, aes))
+	root.AddCommand(NewInitCommand(s, keys, aes, rsa))
 	root.AddUserCommand(NewMkdirCommand(aes))
 	root.AddUserCommand(NewUploadCommand(keys, aes))
 

@@ -23,7 +23,7 @@ type User struct {
 
 // NewUser creates and returns a User. The public-private key pair will be generated
 // for the user. The password is hashed. The api token and private key is encrypted.
-func NewUser(k *security.Keys, aes *crypto.AES, password string, apiToken string) (*User, error) {
+func NewUser(k *security.Keys, aes *crypto.AES, rsa *crypto.RSA, password string, apiToken string) (*User, error) {
 	priv, pub, err := k.GenerateWithPassword(password)
 	if err != nil {
 		return nil, err
