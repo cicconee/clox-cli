@@ -77,3 +77,48 @@ func (a *AES) Generate() ([]byte, error) {
 	_, err := rand.Read(key)
 	return key, err
 }
+
+// EncryptWithPassword encrypts data using the password. A unique salt is generated
+// and used with the password to create the encryption key. The encrypted data is
+// returned as a []byte. The salt is prepended to the encrypted data.
+func (a *AES) Encrypt(data []byte, key []byte) ([]byte, error) {
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		return nil, err
+	}
+
+	return gcm.Seal(nonce, nonce, data, nil), nil
+}
+
+// DecryptWithPassword decrypts data using the password. The salt and password
+// are used to create the encryption key. The data is decrypted and returned as
+// a []byte. Only the password used to encrypt the data will be able to decrypt it.
+func (a *AES) Decrypt(encryptedData []byte, key []byte) ([]byte, error) {
+	blockCipher, err := aes.NewCipher(key)
+	if err != nil {
+		return nil, err
+	}
+
+	gcm, err := cipher.NewGCM(blockCipher)
+	if err != nil {
+		return nil, err
+	}
+
+	nonceSize := gcm.NonceSize()
+	if len(encryptedData) < nonceSize {
+		return nil, errors.New("ciphertext too short")
+	}
+
+	nonce, ciphertext := encryptedData[:nonceSize], encryptedData[nonceSize:]
+	return gcm.Open(nil, nonce, ciphertext, nil)
+}
