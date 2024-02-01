@@ -19,6 +19,7 @@ type User struct {
 	encryptedAPIToken   string
 	encryptedPrivateKey string
 	publicKey           string
+	encryptedEncryptKey string
 }
 
 // NewUser creates and returns a User. The public-private key pair will be generated
@@ -39,11 +40,27 @@ func NewUser(k *security.Keys, aes *crypto.AES, rsa *crypto.RSA, password string
 		return nil, err
 	}
 
+	pubKey, err := k.DecodePublicKey(pub)
+	if err != nil {
+		return nil, err
+	}
+
+	encKey, err := aes.Generate()
+	if err != nil {
+		return nil, err
+	}
+
+	encryptedEncryptKey, err := rsa.Encrypt(encKey, pubKey)
+	if err != nil {
+		return nil, err
+	}
+
 	return &User{
 		passwordHash:        string(hashedPassword),
 		encryptedAPIToken:   base64.StdEncoding.EncodeToString(encryptedAPIToken),
 		encryptedPrivateKey: string(priv),
 		publicKey:           string(pub),
+		encryptedEncryptKey: base64.StdEncoding.EncodeToString(encryptedEncryptKey),
 	}, nil
 }
 
@@ -101,6 +118,20 @@ func (u *User) APIToken(aes *crypto.AES, password string) (string, error) {
 	return string(token), nil
 }
 
+func (u *User) EncryptKey(keys *security.Keys, rsa *crypto.RSA, password string) ([]byte, error) {
+	decoded, err := base64.StdEncoding.DecodeString(u.encryptedEncryptKey)
+	if err != nil {
+		return nil, err
+	}
+
+	privKey, err := u.RSAPrivateKey(keys, password)
+	if err != nil {
+		return nil, err
+	}
+
+	return rsa.Decrypt(decoded, privKey)
+}
+
 // hash hashes the password.
 func hash(password string) ([]byte, error) {
 	return bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
@@ -112,6 +143,7 @@ type UserConfigData struct {
 	EncryptedAPIToken   string `json:"api_token"`
 	EncryptedPrivateKey string `json:"private_key"`
 	PublicKey           string `json:"public_key"`
+	EncryptedEncryptKey string `json:"encrypt_key"`
 }
 
 // UnmarshalJSON accepts a []byte which represents a users configuration and unmarshal
@@ -137,6 +169,7 @@ func (u *User) MarshalJSON() ([]byte, error) {
 		EncryptedAPIToken:   u.encryptedAPIToken,
 		EncryptedPrivateKey: u.encryptedPrivateKey,
 		PublicKey:           u.publicKey,
+		EncryptedEncryptKey: u.encryptedEncryptKey,
 	}
 
 	return json.Marshal(&d)
