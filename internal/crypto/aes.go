@@ -70,3 +70,10 @@ func (a *AES) DecryptWithPassword(data []byte, password []byte) ([]byte, error) 
 	nonce, ciphertext := encryptedData[:nonceSize], encryptedData[nonceSize:]
 	return gcm.Open(nil, nonce, ciphertext, nil)
 }
+
+// Generates a random 32-byte key for AES encryption.
+func (a *AES) Generate() ([]byte, error) {
+	key := make([]byte, 32)
+	_, err := rand.Read(key)
+	return key, err
+}
