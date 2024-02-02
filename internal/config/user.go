@@ -83,6 +83,10 @@ func (u *User) Validate() error {
 		return errors.New("empty public key")
 	}
 
+	if u.encryptedEncryptKey == "" {
+		return errors.New("empty encryption key")
+	}
+
 	return nil
 }
 
