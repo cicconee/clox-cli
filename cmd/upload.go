@@ -120,6 +120,11 @@ type UploadInput struct {
 // specified ID. If no flag is set, it will upload files using an empty path. This
 // will default to the users root directory.
 func (c *UploadCommand) Run(cmd *cobra.Command, args []string) {
+	if c.path != "" && c.id != "" {
+		fmt.Println("Only one flag can be set: path (-p, --path) or id (-i, --id)")
+		return
+	}
+
 	token, err := c.user.APIToken(c.aes, c.password)
 	if err != nil {
 		fmt.Println("Error:", err)
@@ -188,14 +193,15 @@ func (c *UploadCommand) Run(cmd *cobra.Command, args []string) {
 	multipartWriter.Close()
 
 	// Build the request with the request body.
-	req, err := NewAuthRequest(AuthRequestParams{
-		Method: "POST",
-		URL:    "http://localhost:8081/api/upload",
-		Body:   &reqBody,
-		Token:  token,
-	})
-	if err != nil {
-		fmt.Println("Error: Request:", err)
+	var req *http.Request
+	var rErr error
+	if c.path != "" || (c.path == "" && c.id == "") {
+		req, rErr = c.newPathRequest(&reqBody, token)
+	} else {
+		req, rErr = c.newIDRequest(&reqBody, token)
+	}
+	if rErr != nil {
+		fmt.Println("Error: Request:", rErr)
 		return
 	}
 	defer req.Body.Close()
@@ -236,4 +242,27 @@ func (c *UploadCommand) Run(cmd *cobra.Command, args []string) {
 	for _, e := range respData.Errors {
 		fmt.Printf("%s -> %s\n", e.FileName, e.Error)
 	}
+}
+
+// newPathRequest creates a *http.Request to upload files using the path query
+// parameter.
+func (c *UploadCommand) newPathRequest(body *bytes.Buffer, token string) (*http.Request, error) {
+	return NewAuthRequest(AuthRequestParams{
+		Method: "POST",
+		URL:    "http://localhost:8081/api/upload",
+		Body:   body,
+		Token:  token,
+		Query:  map[string]string{"path": c.path},
+	})
+}
+
+// newIDRequest creates a *http.Request to upload files by specifying the directory
+// ID.
+func (c *UploadCommand) newIDRequest(body *bytes.Buffer, token string) (*http.Request, error) {
+	return NewAuthRequest(AuthRequestParams{
+		Method: "POST",
+		URL:    fmt.Sprintf("http://localhost:8081/api/upload/%s", c.id),
+		Body:   body,
+		Token:  token,
+	})
 }
