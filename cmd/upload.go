@@ -27,6 +27,7 @@ type UploadCommand struct {
 	password string
 	keys     *security.Keys
 	aes      *crypto.AES
+	rsa      *crypto.RSA
 	path     string
 	id       string
 }
@@ -41,8 +42,8 @@ type UploadCommand struct {
 //
 // If neither a path or id flag is set, the files will upload to the users root
 // directory by default. The path and id flags cannot be used together.
-func NewUploadCommand(keys *security.Keys, aes *crypto.AES) *UploadCommand {
-	uploadCmd := &UploadCommand{keys: keys, aes: aes}
+func NewUploadCommand(keys *security.Keys, aes *crypto.AES, rsa *crypto.RSA) *UploadCommand {
+	uploadCmd := &UploadCommand{keys: keys, aes: aes, rsa: rsa}
 
 	uploadCmd.cmd = &cobra.Command{
 		Use:   "upload <file1>:<name1> [<file2>:<name2>...]",
@@ -125,6 +126,12 @@ func (c *UploadCommand) Run(cmd *cobra.Command, args []string) {
 		return
 	}
 
+	encryptKey, err := c.user.EncryptKey(c.keys, c.rsa, c.password)
+	if err != nil {
+		fmt.Println("Error: Getting Encryption Key:", err)
+		return
+	}
+
 	// Parse the <file>:<name> args.
 	uploads := []UploadInput{}
 	for i, a := range args {
@@ -153,13 +160,27 @@ func (c *UploadCommand) Run(cmd *cobra.Command, args []string) {
 		}
 		defer file.Close()
 
+		data, err := io.ReadAll(file)
+		if err != nil {
+			fmt.Printf("Error: Reading File [Path: %s, Index: %d]: %v\n",
+				u.Path, u.Index, err)
+			return
+		}
+
+		encData, err := c.aes.Encrypt(data, encryptKey)
+		if err != nil {
+			fmt.Printf("Error: Encrypting File [Path: %s, Index: %d]: %v\n",
+				u.Path, u.Index, err)
+			return
+		}
+
 		formFile, err := multipartWriter.CreateFormFile("file_uploads", u.Filename)
 		if err != nil {
 			fmt.Printf("Error: Creating form file [Filename: %s, Index: %d]: %v", u.Filename, u.Index, err)
 			return
 		}
 
-		if _, err := io.Copy(formFile, file); err != nil {
+		if _, err := io.Copy(formFile, bytes.NewReader(encData)); err != nil {
 			fmt.Printf("Error: Copying file [Filename: %s, Index: %d]: %v", u.Filename, u.Index, err)
 			return
 		}
