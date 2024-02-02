@@ -42,7 +42,7 @@ func (k *Keys) GenerateWithPassword(password string) ([]byte, []byte, error) {
 // encryptPrivateKey encrypts the private key with the password.
 func (k *Keys) encryptPrivateKey(priv *rsa.PrivateKey, password string) ([]byte, error) {
 	privBytes := x509.MarshalPKCS1PrivateKey(priv)
-	encrypted, err := k.AES.EncryptWithPassword(privBytes, privBytes)
+	encrypted, err := k.AES.EncryptWithPassword(privBytes, []byte(password))
 	if err != nil {
 		return nil, err
 	}
