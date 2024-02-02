@@ -173,5 +173,5 @@ func (u *User) MarshalJSON() ([]byte, error) {
 		EncryptedEncryptKey: u.encryptedEncryptKey,
 	}
 
-	return json.Marshal(&d)
+	return json.MarshalIndent(&d, "", "  ")
 }
