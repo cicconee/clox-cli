@@ -225,5 +225,15 @@ func (c *UploadCommand) Run(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	fmt.Println(respData)
+	uploadCount := len(respData.Uploads)
+	fmt.Printf("\nUploaded: %d\n", uploadCount)
+	for _, u := range respData.Uploads {
+		fmt.Printf("%s -> %s\n", u.ID, u.Path)
+	}
+
+	errorCount := len(respData.Errors)
+	fmt.Printf("\nErrors: %d\n", errorCount)
+	for _, e := range respData.Errors {
+		fmt.Printf("%s -> %s\n", e.FileName, e.Error)
+	}
 }
