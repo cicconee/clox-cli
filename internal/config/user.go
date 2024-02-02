@@ -159,6 +159,7 @@ func (u *User) UnmarshalJSON(data []byte) error {
 	u.encryptedAPIToken = d.EncryptedAPIToken
 	u.encryptedPrivateKey = d.EncryptedPrivateKey
 	u.publicKey = d.PublicKey
+	u.encryptedEncryptKey = d.EncryptedEncryptKey
 	return nil
 }
 
