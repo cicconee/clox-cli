@@ -78,27 +78,6 @@ type NewDirResponse struct {
 	LastWrite time.Time `json:"last_write"`
 }
 
-// ErrorResponse is the response body when the API server responds with an error.
-// Every error response from the server conforms to this structure.
-type ErrorResponse struct {
-	Err        string `json:"error"`
-	StatusCode int    `json:"status_code"`
-}
-
-// APIError is a custom error type that represents an HTTP error response from the
-// API.
-//
-// APIError satisfies the error interface.
-type APIError struct {
-	Err        string
-	StatusCode int
-}
-
-// The function that satisfies the error interface.
-func (e *APIError) Error() string {
-	return e.Err
-}
-
 // Run is the Run function of the cobra.Command in this MkdirCommand.
 //
 // Run will create a new directory on the Clox server. The password is used to
@@ -153,7 +132,7 @@ func (c *MkdirCommand) Run(cmd *cobra.Command, args []string) {
 	err = api.ParseResponse(res, respData)
 	if err != nil {
 		switch e := err.(type) {
-		case *APIError:
+		case *api.APIError:
 			fmt.Printf("API Error [%d]: %s\n", e.StatusCode, e.Err)
 			fmt.Printf("-> [ARG] Name: %s\n", args[0])
 			fmt.Printf("-> [FLAG] Path: %s\n", c.path)

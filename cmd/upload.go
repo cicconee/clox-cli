@@ -221,7 +221,7 @@ func (c *UploadCommand) Run(cmd *cobra.Command, args []string) {
 	err = api.ParseResponse(res, &respData)
 	if err != nil {
 		switch e := err.(type) {
-		case *APIError:
+		case *api.APIError:
 			fmt.Printf("API Error [%d]: %s\n", e.StatusCode, e.Err)
 			fmt.Printf("-> [ARG] Name: %s\n", args[0])
 			fmt.Printf("-> [FLAG] Path: %s\n", c.path)
