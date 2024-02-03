@@ -71,7 +71,7 @@ func NewDirWithPath(client *http.Client, path string, p NewDirParams) (*NewDirRe
 	respData := &NewDirResponse{}
 	err = ParseResponse(res, respData)
 	if err != nil {
-		return nil, fmt.Errorf("parsing response: %w", err)
+		return nil, err
 	}
 
 	return respData, nil
@@ -109,7 +109,7 @@ func NewDirWithID(client *http.Client, id string, p NewDirParams) (*NewDirRespon
 	respData := &NewDirResponse{}
 	err = ParseResponse(res, respData)
 	if err != nil {
-		return nil, fmt.Errorf("parsing response: %w", err)
+		return nil, err
 	}
 
 	return respData, nil
