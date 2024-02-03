@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/cicconee/clox-cli/internal/api"
 	"github.com/cicconee/clox-cli/internal/config"
 	"github.com/cicconee/clox-cli/internal/crypto"
 	"github.com/spf13/cobra"
@@ -172,7 +173,7 @@ func (c *MkdirCommand) Run(cmd *cobra.Command, args []string) {
 }
 
 func (c *MkdirCommand) newPathRequest(body *bytes.Buffer, token string) (*http.Request, error) {
-	return NewAuthRequest(AuthRequestParams{
+	return api.NewRequest(api.RequestParams{
 		Method: "POST",
 		URL:    "http://localhost:8081/api/dir",
 		Body:   body,
@@ -182,39 +183,12 @@ func (c *MkdirCommand) newPathRequest(body *bytes.Buffer, token string) (*http.R
 }
 
 func (c *MkdirCommand) newIDRequest(body *bytes.Buffer, token string) (*http.Request, error) {
-	return NewAuthRequest(AuthRequestParams{
+	return api.NewRequest(api.RequestParams{
 		Method: "POST",
 		URL:    fmt.Sprintf("http://localhost:8081/api/dir/%s", c.id),
 		Body:   body,
 		Token:  token,
 	})
-}
-
-type AuthRequestParams struct {
-	Method string
-	URL    string
-	Body   *bytes.Buffer
-	Token  string
-	Query  map[string]string
-}
-
-func NewAuthRequest(p AuthRequestParams) (*http.Request, error) {
-	r, err := http.NewRequest(p.Method, p.URL, p.Body)
-	if err != nil {
-		return nil, err
-	}
-	authHeader := fmt.Sprintf("Bearer %s", p.Token)
-	r.Header.Set("Authorization", authHeader)
-
-	if p.Query != nil {
-		q := r.URL.Query()
-		for k, v := range p.Query {
-			q.Set(k, v)
-		}
-		r.URL.RawQuery = q.Encode()
-	}
-
-	return r, nil
 }
 
 // HandleResponse handles http.Response from the Clox API. A successful request will

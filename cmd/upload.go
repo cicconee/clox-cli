@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cicconee/clox-cli/internal/api"
 	"github.com/cicconee/clox-cli/internal/config"
 	"github.com/cicconee/clox-cli/internal/crypto"
 	"github.com/cicconee/clox-cli/internal/security"
@@ -247,7 +248,7 @@ func (c *UploadCommand) Run(cmd *cobra.Command, args []string) {
 // newPathRequest creates a *http.Request to upload files using the path query
 // parameter.
 func (c *UploadCommand) newPathRequest(body *bytes.Buffer, token string) (*http.Request, error) {
-	return NewAuthRequest(AuthRequestParams{
+	return api.NewRequest(api.RequestParams{
 		Method: "POST",
 		URL:    "http://localhost:8081/api/upload",
 		Body:   body,
@@ -259,7 +260,7 @@ func (c *UploadCommand) newPathRequest(body *bytes.Buffer, token string) (*http.
 // newIDRequest creates a *http.Request to upload files by specifying the directory
 // ID.
 func (c *UploadCommand) newIDRequest(body *bytes.Buffer, token string) (*http.Request, error) {
-	return NewAuthRequest(AuthRequestParams{
+	return api.NewRequest(api.RequestParams{
 		Method: "POST",
 		URL:    fmt.Sprintf("http://localhost:8081/api/upload/%s", c.id),
 		Body:   body,
