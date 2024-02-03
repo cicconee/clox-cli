@@ -76,3 +76,41 @@ func NewDirWithPath(client *http.Client, path string, p NewDirParams) (*NewDirRe
 
 	return respData, nil
 }
+
+// NewDirWithID calls the API to create a new directory. The id parameter is the ID
+// of the directory that the new directory will be created in (the parent directory).
+//
+// If the API responds with an error (non-200 status code), it will return nil and
+// an *APIError.
+func NewDirWithID(client *http.Client, id string, p NewDirParams) (*NewDirResponse, error) {
+	reqBody := newDirRequestBody{Name: p.DirName}
+	jsonData, err := json.Marshal(&reqBody)
+	if err != nil {
+		return nil, fmt.Errorf("marshalling data: %w", err)
+	}
+
+	req, err := NewRequest(RequestParams{
+		Method: "POST",
+		URL:    fmt.Sprintf("%s/api/dir/%s", p.BaseURL, id),
+		Body:   bytes.NewBuffer(jsonData),
+		Token:  p.Token,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("creating request: %w", err)
+	}
+	defer req.Body.Close()
+
+	res, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("sending request: %w", err)
+	}
+	defer res.Body.Close()
+
+	respData := &NewDirResponse{}
+	err = ParseResponse(res, respData)
+	if err != nil {
+		return nil, fmt.Errorf("parsing response: %w", err)
+	}
+
+	return respData, nil
+}
