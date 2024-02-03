@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -99,72 +97,36 @@ func (c *MkdirCommand) Run(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	data := &NewDirRequest{Name: args[0]}
-	jsonData, err := json.Marshal(data)
-	if err != nil {
-		fmt.Println("Error: Marshal:", err)
-		return
-	}
-
-	var req *http.Request
-	var rErr error
-	if c.path != "" || (c.path == "" && c.id == "") {
-		req, rErr = c.newPathRequest(bytes.NewBuffer(jsonData), token)
-	} else {
-		req, rErr = c.newIDRequest(bytes.NewBuffer(jsonData), token)
-	}
-	if rErr != nil {
-		fmt.Println("Error: Request:", rErr)
-		return
-	}
-	defer req.Body.Close()
-
 	// Create the HTTP client and do the request.
 	client := &http.Client{}
-	res, err := client.Do(req)
-	if err != nil {
-		fmt.Println("Error: Sending Request:", err)
-		return
+	dirParams := api.NewDirParams{
+		BaseURL: "http://localhost:8081",
+		DirName: args[0],
+		Token:   token,
 	}
-	defer res.Body.Close()
-
-	respData := &NewDirResponse{}
-	err = api.ParseResponse(res, respData)
-	if err != nil {
-		switch e := err.(type) {
+	var res *api.NewDirResponse
+	var rErr error
+	if c.path != "" || (c.path == "" && c.id == "") {
+		res, rErr = api.NewDirWithPath(client, c.path, dirParams)
+	} else {
+		res, rErr = api.NewDirWithID(client, c.id, dirParams)
+	}
+	if rErr != nil {
+		switch e := rErr.(type) {
 		case *api.APIError:
 			fmt.Printf("API Error [%d]: %s\n", e.StatusCode, e.Err)
 			fmt.Printf("-> [ARG] Name: %s\n", args[0])
 			fmt.Printf("-> [FLAG] Path: %s\n", c.path)
 			fmt.Printf("-> [FLAG] Parent ID: %s\n", c.id)
 		default:
-			fmt.Printf("Error: %v\n", err)
+			fmt.Printf("Error: %v\n", rErr)
 		}
 		return
 	}
 
-	fmt.Printf("API [%d]: Directory Created\n", res.StatusCode)
-	fmt.Printf("-> Name: %s\n", respData.DirName)
-	fmt.Printf("-> Path: %s\n", respData.DirPath)
-	fmt.Printf("-> ID: %s\n", respData.ID)
+	fmt.Printf("API [%d]: Directory Created\n", 200)
+	fmt.Printf("-> Name: %s\n", res.DirName)
+	fmt.Printf("-> Path: %s\n", res.DirPath)
+	fmt.Printf("-> ID: %s\n", res.ID)
 	return
-}
-
-func (c *MkdirCommand) newPathRequest(body *bytes.Buffer, token string) (*http.Request, error) {
-	return api.NewRequest(api.RequestParams{
-		Method: "POST",
-		URL:    "http://localhost:8081/api/dir",
-		Body:   body,
-		Token:  token,
-		Query:  map[string]string{"path": c.path},
-	})
-}
-
-func (c *MkdirCommand) newIDRequest(body *bytes.Buffer, token string) (*http.Request, error) {
-	return api.NewRequest(api.RequestParams{
-		Method: "POST",
-		URL:    fmt.Sprintf("http://localhost:8081/api/dir/%s", c.id),
-		Body:   body,
-		Token:  token,
-	})
 }
