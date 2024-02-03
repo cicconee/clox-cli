@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/cicconee/clox-cli/internal/api"
 	"github.com/cicconee/clox-cli/internal/config"
@@ -55,25 +54,6 @@ func (c *MkdirCommand) SetUser(user *config.User) {
 
 func (c *MkdirCommand) SetPassword(password string) {
 	c.password = password
-}
-
-// NewDirRequest is the body of the POST request when creating a new directory.
-type NewDirRequest struct {
-	// The name of the directory being created.
-	Name string `json:"name"`
-}
-
-// NewDirResponse is the response body of the POST request when creating a new
-// directory.
-type NewDirResponse struct {
-	ID        string    `json:"id"`
-	OwnerID   string    `json:"owner_id"`
-	ParentID  string    `json:"parent_id"`
-	DirName   string    `json:"directory_name"`
-	DirPath   string    `json:"directory_path"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	LastWrite time.Time `json:"last_write"`
 }
 
 // Run is the Run function of the cobra.Command in this MkdirCommand.
