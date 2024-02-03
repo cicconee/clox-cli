@@ -218,7 +218,7 @@ func (c *UploadCommand) Run(cmd *cobra.Command, args []string) {
 	defer res.Body.Close()
 
 	respData := UploadResponse{}
-	err = HandleResponse(res, &respData)
+	err = api.ParseResponse(res, &respData)
 	if err != nil {
 		switch e := err.(type) {
 		case *APIError:

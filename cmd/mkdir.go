@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"time"
 
@@ -151,7 +150,7 @@ func (c *MkdirCommand) Run(cmd *cobra.Command, args []string) {
 	defer res.Body.Close()
 
 	respData := &NewDirResponse{}
-	err = HandleResponse(res, respData)
+	err = api.ParseResponse(res, respData)
 	if err != nil {
 		switch e := err.(type) {
 		case *APIError:
@@ -189,55 +188,4 @@ func (c *MkdirCommand) newIDRequest(body *bytes.Buffer, token string) (*http.Req
 		Body:   body,
 		Token:  token,
 	})
-}
-
-// HandleResponse handles http.Response from the Clox API. A successful request will
-// parse JSON body into dst.
-//
-// If the API responds with an error (non-200 status code), it will return an
-// *APIError.
-func HandleResponse(r *http.Response, dst any) error {
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		return fmt.Errorf("reading body: %w", err)
-	}
-	defer r.Body.Close()
-
-	if r.StatusCode != 200 {
-		return parseErrorResponse(body, r.StatusCode)
-	}
-
-	return parseResponse(body, dst)
-}
-
-// parseResponse will unmarshal the JSON in the []byte into dst.
-//
-// The []byte is expected to hold a valid JSON structure, if it does not, an error
-// is returned.
-func parseResponse(b []byte, dst any) error {
-	err := json.Unmarshal(b, dst)
-	if err != nil {
-		return fmt.Errorf("unmarshalling body: %w", err)
-	}
-
-	return nil
-}
-
-// parseErrorResponse will unmarshal an API error response and return it as a
-// *APIError. The JSON in the []byte is unmarshalled into an ErrorResponse. The
-// ErrorResponse is then used to construct and return a *APIError.
-//
-// If unmarshalling the []byte fails, it will still return a *APIError, but the
-// Err field will specify that parsing the API error response failed. If this ever
-// happens, most likely the server is responding with invalid data and something is
-// wrong.
-func parseErrorResponse(b []byte, statusCode int) error {
-	var errResp ErrorResponse
-	if err := json.Unmarshal(b, &errResp); err != nil {
-		return &APIError{
-			StatusCode: statusCode,
-			Err:        "Failed to parse API error response"}
-	}
-
-	return &APIError{Err: errResp.Err, StatusCode: errResp.StatusCode}
 }
