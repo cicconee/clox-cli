@@ -56,6 +56,32 @@ func NewRequest(p RequestParams) (*http.Request, error) {
 	return r, nil
 }
 
+// DoRequest creates and executes a *http.Request that is configured with
+// RequestParams. The response is parsed into dst.
+//
+// If the API responds with an error (non-200 status code), it will return an
+// *APIError.
+func DoRequest(client *http.Client, dst any, p RequestParams) error {
+	req, err := NewRequest(p)
+	if err != nil {
+		return fmt.Errorf("creating request: %w", err)
+	}
+	defer req.Body.Close()
+
+	res, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("sending request: %w", err)
+	}
+	defer res.Body.Close()
+
+	err = ParseResponse(res, dst)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // HandleResponse handles *http.Response from the Clox API. A successful request will
 // parse JSON body into dst.
 //
