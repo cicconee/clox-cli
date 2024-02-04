@@ -1,14 +1,9 @@
 package cmd
 
 import (
-	"bytes"
 	"fmt"
-	"io"
-	"mime/multipart"
 	"net/http"
-	"os"
 	"strings"
-	"time"
 
 	"github.com/cicconee/clox-cli/internal/api"
 	"github.com/cicconee/clox-cli/internal/config"
@@ -71,34 +66,6 @@ func (c *UploadCommand) SetPassword(password string) {
 	c.password = password
 }
 
-// UploadFileResponse is the result of a successful file upload. Each
-// UploadFileResponse corresponds to a single file. This is a single entry within
-// UploadResponse.Uploads.
-type UploadFileResponse struct {
-	ID          string    `json:"id"`
-	OwnerID     string    `json:"owner_id"`
-	DirectoryID string    `json:"directory_id"`
-	Name        string    `json:"file_name"`
-	Path        string    `json:"file_path"`
-	Size        int64     `json:"file_size"`
-	UploadedAt  time.Time `json:"uploaded_at"`
-}
-
-// UploadErrorResponse is the result of a failed file upload. Each
-// UploadErrorResponse corresponds to a single file failure. This is a single
-// entry within UploadResponse.Errors.
-type UploadErrorResponse struct {
-	FileName string `json:"file_name"`
-	Size     int64  `json:"file_size"`
-	Error    string `json:"error"`
-}
-
-// UploadResponse is the response body of the POST request when uploading files.
-type UploadResponse struct {
-	Uploads []UploadFileResponse  `json:"uploads"`
-	Errors  []UploadErrorResponse `json:"errors"`
-}
-
 // Run is the Run function of the cobra.Command in this UploadCommand.
 //
 // Run will upload files to the Clox server. Users specify the file to upload and
@@ -130,129 +97,54 @@ func (c *UploadCommand) Run(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	var reqBody bytes.Buffer
-	multipartWriter := multipart.NewWriter(&reqBody)
-
+	// Parse the <file>:<name> args.
+	uploads := []api.FileUpload{}
 	for i, a := range args {
-		// Parse the <file>:<name> args.
 		parts := strings.Split(a, ":")
 		if len(parts) != 2 {
 			fmt.Printf("Invalid syntax [Index: %d, Input: %s]: ", i, a)
 			fmt.Println("Must be in format <file>:<name>")
 			return
 		}
-		path, filename := parts[0], parts[1]
-
-		// Build the request body by reading each file on the file system,
-		// encrypt the data, and write to the form file.
-		file, err := os.Open(path)
-		if err != nil {
-			fmt.Printf("Error: Opening file [Path: %s, Index: %d]: %v",
-				path, i, err)
-			return
-		}
-		defer file.Close()
-
-		data, err := io.ReadAll(file)
-		if err != nil {
-			fmt.Printf("Error: Reading File [Path: %s, Index: %d]: %v\n",
-				path, i, err)
-			return
-		}
-
-		encData, err := c.aes.Encrypt(data, encryptKey)
-		if err != nil {
-			fmt.Printf("Error: Encrypting File [Path: %s, Index: %d]: %v\n",
-				path, i, err)
-			return
-		}
-
-		formFile, err := multipartWriter.CreateFormFile("file_uploads", filename)
-		if err != nil {
-			fmt.Printf("Error: Creating form file [Filename: %s, Index: %d]: %v",
-				filename, i, err)
-			return
-		}
-
-		if _, err := io.Copy(formFile, bytes.NewReader(encData)); err != nil {
-			fmt.Printf("Error: Copying file [Filename: %s, Index: %d]: %v",
-				filename, i, err)
-			return
-		}
+		uploads = append(uploads, api.FileUpload{Path: parts[0], Filename: parts[1]})
 	}
-	multipartWriter.Close()
 
-	// Build the request with the request body.
-	var req *http.Request
+	// Create the HTTP client and do the request.
+	client := &http.Client{}
+	uploadParams := api.UploadParams{
+		BaseURL: "http://localhost:8081",
+		Token:   token,
+		Uploads: uploads,
+		Key:     encryptKey,
+		Alg:     c.aes,
+	}
+	var res *api.UploadResponse
 	var rErr error
 	if c.path != "" || (c.path == "" && c.id == "") {
-		req, rErr = c.newPathRequest(&reqBody, token)
+		res, rErr = api.UploadWithPath(client, c.path, uploadParams)
 	} else {
-		req, rErr = c.newIDRequest(&reqBody, token)
+		res, rErr = api.UploadWithID(client, c.id, uploadParams)
 	}
 	if rErr != nil {
-		fmt.Println("Error: Request:", rErr)
-		return
-	}
-	defer req.Body.Close()
-	req.Header.Set("Content-Type", multipartWriter.FormDataContentType())
-
-	// Do the request and parse the response.
-	client := &http.Client{}
-	res, err := client.Do(req)
-	if err != nil {
-		fmt.Println("Error: Sending Request:", err)
-		return
-	}
-	defer res.Body.Close()
-
-	respData := UploadResponse{}
-	err = api.ParseResponse(res, &respData)
-	if err != nil {
-		switch e := err.(type) {
+		switch e := rErr.(type) {
 		case *api.APIError:
 			fmt.Printf("API Error [%d]: %s\n", e.StatusCode, e.Err)
-			fmt.Printf("-> [ARG] Name: %s\n", args[0])
+			fmt.Printf("-> [ARGS] Uploads: %v\n", args)
 			fmt.Printf("-> [FLAG] Path: %s\n", c.path)
 			fmt.Printf("-> [FLAG] Directory ID: %s\n", c.id)
 		default:
-			fmt.Printf("Error: %v\n", err)
+			fmt.Printf("Error: %v\n", rErr)
 		}
 		return
 	}
 
-	uploadCount := len(respData.Uploads)
-	fmt.Printf("\nUploaded: %d\n", uploadCount)
-	for _, u := range respData.Uploads {
+	fmt.Printf("\nUploaded: %d\n", len(res.Uploads))
+	for _, u := range res.Uploads {
 		fmt.Printf("%s -> %s\n", u.ID, u.Path)
 	}
 
-	errorCount := len(respData.Errors)
-	fmt.Printf("\nErrors: %d\n", errorCount)
-	for _, e := range respData.Errors {
+	fmt.Printf("\nErrors: %d\n", len(res.Errors))
+	for _, e := range res.Errors {
 		fmt.Printf("%s -> %s\n", e.FileName, e.Error)
 	}
-}
-
-// newPathRequest creates a *http.Request to upload files using the path query
-// parameter.
-func (c *UploadCommand) newPathRequest(body *bytes.Buffer, token string) (*http.Request, error) {
-	return api.NewRequest(api.RequestParams{
-		Method: "POST",
-		URL:    "http://localhost:8081/api/upload",
-		Body:   body,
-		Token:  token,
-		Query:  map[string]string{"path": c.path},
-	})
-}
-
-// newIDRequest creates a *http.Request to upload files by specifying the directory
-// ID.
-func (c *UploadCommand) newIDRequest(body *bytes.Buffer, token string) (*http.Request, error) {
-	return api.NewRequest(api.RequestParams{
-		Method: "POST",
-		URL:    fmt.Sprintf("http://localhost:8081/api/upload/%s", c.id),
-		Body:   body,
-		Token:  token,
-	})
 }
