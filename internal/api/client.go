@@ -66,7 +66,6 @@ func ParseResponse(r *http.Response, dst any) error {
 	if err != nil {
 		return fmt.Errorf("reading body: %w", err)
 	}
-	defer r.Body.Close()
 
 	if r.StatusCode != 200 {
 		return ParseErrorResponse(body, r.StatusCode)
