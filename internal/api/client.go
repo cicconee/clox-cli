@@ -21,14 +21,15 @@ func NewClient(http *http.Client, baseURL string, token string) *Client {
 	return &Client{http: http, baseURL: baseURL, token: token}
 }
 
-// RequestParams is the parameters when creating a new request. The Query field is
-// optional.
+// RequestParams is the parameters when creating a new request. The Query and Header
+// field is optional.
 type RequestParams struct {
 	Method string
 	URL    string
 	Body   *bytes.Buffer
 	Token  string
 	Query  map[string]string
+	Header map[string]string
 }
 
 // NewRequest creates a new *http.Request that is configured with RequestParams.
@@ -46,6 +47,10 @@ func NewRequest(p RequestParams) (*http.Request, error) {
 			q.Set(k, v)
 		}
 		r.URL.RawQuery = q.Encode()
+	}
+
+	for k, v := range p.Header {
+		r.Header.Set(k, v)
 	}
 
 	return r, nil
