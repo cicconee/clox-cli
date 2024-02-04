@@ -79,27 +79,14 @@ func newDir(client *http.Client, c newDirConfig) (*NewDirResponse, error) {
 		return nil, fmt.Errorf("marshalling data: %w", err)
 	}
 
-	req, err := NewRequest(RequestParams{
+	respData := &NewDirResponse{}
+	if err := DoRequest(client, respData, RequestParams{
 		Method: "POST",
 		URL:    fmt.Sprintf("%s/%s", c.BaseURL, c.URLPath),
 		Body:   bytes.NewBuffer(jsonData),
 		Token:  c.Token,
 		Query:  c.Query,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("creating request: %w", err)
-	}
-	defer req.Body.Close()
-
-	res, err := client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("sending request: %w", err)
-	}
-	defer res.Body.Close()
-
-	respData := &NewDirResponse{}
-	err = ParseResponse(res, respData)
-	if err != nil {
+	}); err != nil {
 		return nil, err
 	}
 

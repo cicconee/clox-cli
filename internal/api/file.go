@@ -152,28 +152,15 @@ func upload(client *http.Client, c uploadConfig) (*UploadResponse, error) {
 	}
 	writer.Close()
 
-	req, err := NewRequest(RequestParams{
+	respData := &UploadResponse{}
+	if err := DoRequest(client, &respData, RequestParams{
 		Method: "POST",
 		URL:    fmt.Sprintf("%s/%s", c.BaseURL, c.URLPath),
 		Body:   &reqBody,
 		Token:  c.Token,
 		Query:  c.Query,
 		Header: map[string]string{"Content-Type": writer.FormDataContentType()},
-	})
-	if err != nil {
-		return nil, fmt.Errorf("creating request: %w", err)
-	}
-	defer req.Body.Close()
-
-	res, err := client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("sending request: %w", err)
-	}
-	defer res.Body.Close()
-
-	respData := &UploadResponse{}
-	err = ParseResponse(res, respData)
-	if err != nil {
+	}); err != nil {
 		return nil, err
 	}
 
