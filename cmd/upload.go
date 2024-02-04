@@ -99,14 +99,6 @@ type UploadResponse struct {
 	Errors  []UploadErrorResponse `json:"errors"`
 }
 
-// UploadInput is the input for uploading a file. A UploadInput corresponds to a
-// single file to be uploaded with the 'upload' command.
-type UploadInput struct {
-	Index    int
-	Path     string
-	Filename string
-}
-
 // Run is the Run function of the cobra.Command in this UploadCommand.
 //
 // Run will upload files to the Clox server. Users specify the file to upload and
@@ -138,30 +130,25 @@ func (c *UploadCommand) Run(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	// Parse the <file>:<name> args.
-	uploads := []UploadInput{}
+	var reqBody bytes.Buffer
+	multipartWriter := multipart.NewWriter(&reqBody)
+
 	for i, a := range args {
+		// Parse the <file>:<name> args.
 		parts := strings.Split(a, ":")
 		if len(parts) != 2 {
 			fmt.Printf("Invalid syntax [Index: %d, Input: %s]: ", i, a)
 			fmt.Println("Must be in format <file>:<name>")
 			return
 		}
-		uploads = append(uploads, UploadInput{
-			Index:    i,
-			Path:     parts[0],
-			Filename: parts[1],
-		})
-	}
+		path, filename := parts[0], parts[1]
 
-	// Build the request body by reading each file on the file system into a
-	// form file.
-	var reqBody bytes.Buffer
-	multipartWriter := multipart.NewWriter(&reqBody)
-	for _, u := range uploads {
-		file, err := os.Open(u.Path)
+		// Build the request body by reading each file on the file system,
+		// encrypt the data, and write to the form file.
+		file, err := os.Open(path)
 		if err != nil {
-			fmt.Printf("Error: Opening file [Path: %s, Index: %d]: %v", u.Path, u.Index, err)
+			fmt.Printf("Error: Opening file [Path: %s, Index: %d]: %v",
+				path, i, err)
 			return
 		}
 		defer file.Close()
@@ -169,25 +156,27 @@ func (c *UploadCommand) Run(cmd *cobra.Command, args []string) {
 		data, err := io.ReadAll(file)
 		if err != nil {
 			fmt.Printf("Error: Reading File [Path: %s, Index: %d]: %v\n",
-				u.Path, u.Index, err)
+				path, i, err)
 			return
 		}
 
 		encData, err := c.aes.Encrypt(data, encryptKey)
 		if err != nil {
 			fmt.Printf("Error: Encrypting File [Path: %s, Index: %d]: %v\n",
-				u.Path, u.Index, err)
+				path, i, err)
 			return
 		}
 
-		formFile, err := multipartWriter.CreateFormFile("file_uploads", u.Filename)
+		formFile, err := multipartWriter.CreateFormFile("file_uploads", filename)
 		if err != nil {
-			fmt.Printf("Error: Creating form file [Filename: %s, Index: %d]: %v", u.Filename, u.Index, err)
+			fmt.Printf("Error: Creating form file [Filename: %s, Index: %d]: %v",
+				filename, i, err)
 			return
 		}
 
 		if _, err := io.Copy(formFile, bytes.NewReader(encData)); err != nil {
-			fmt.Printf("Error: Copying file [Filename: %s, Index: %d]: %v", u.Filename, u.Index, err)
+			fmt.Printf("Error: Copying file [Filename: %s, Index: %d]: %v",
+				filename, i, err)
 			return
 		}
 	}
