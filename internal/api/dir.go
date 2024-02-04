@@ -31,12 +31,6 @@ type NewDirResponse struct {
 	LastWrite time.Time `json:"last_write"`
 }
 
-// newDirRequestBody is the request body of the POST request when creating a new
-// directory.
-type newDirRequestBody struct {
-	Name string `json:"name"`
-}
-
 // NewDirWithPath calls the API to create a new directory by specifying the parent
 // directory path. The path parameter is the path that the directory will be created
 // within. This parameter is optional and if empty will create the directory in the
@@ -69,6 +63,12 @@ type newDirConfig struct {
 	NewDirParams
 	URLPath string
 	Query   map[string]string
+}
+
+// newDirRequestBody is the request body of the POST request when creating a new
+// directory.
+type newDirRequestBody struct {
+	Name string `json:"name"`
 }
 
 // newDir creates a new directory by calling the Clox API.
