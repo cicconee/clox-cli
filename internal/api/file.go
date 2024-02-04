@@ -80,7 +80,7 @@ type UploadParams struct {
 // an *APIError.
 func UploadWithPath(client *http.Client, path string, p UploadParams) (*UploadResponse, error) {
 	var reqBody bytes.Buffer
-	multipartWriter := multipart.NewWriter(&reqBody)
+	writer := multipart.NewWriter(&reqBody)
 	for i, u := range p.Uploads {
 		path := u.Path
 		filename := u.Filename
@@ -103,7 +103,7 @@ func UploadWithPath(client *http.Client, path string, p UploadParams) (*UploadRe
 			return nil, fmt.Errorf("encrypting '%s' [index: %d]: %w", path, i, err)
 		}
 
-		formFile, err := multipartWriter.CreateFormFile("file_uploads", filename)
+		formFile, err := writer.CreateFormFile("file_uploads", filename)
 		if err != nil {
 			return nil, fmt.Errorf("creating form file '%s' [index: %d, name: %s]: %w",
 				path, i, filename, err)
@@ -114,7 +114,7 @@ func UploadWithPath(client *http.Client, path string, p UploadParams) (*UploadRe
 				path, i, filename, err)
 		}
 	}
-	multipartWriter.Close()
+	writer.Close()
 
 	req, err := NewRequest(RequestParams{
 		Method: "POST",
@@ -122,12 +122,12 @@ func UploadWithPath(client *http.Client, path string, p UploadParams) (*UploadRe
 		Body:   &reqBody,
 		Token:  p.Token,
 		Query:  map[string]string{"path": path},
+		Header: map[string]string{"Content-Type": writer.FormDataContentType()},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("creating request: %w", err)
 	}
 	defer req.Body.Close()
-	req.Header.Set("Content-Type", multipartWriter.FormDataContentType())
 
 	res, err := client.Do(req)
 	if err != nil {
@@ -159,7 +159,7 @@ func UploadWithPath(client *http.Client, path string, p UploadParams) (*UploadRe
 // an *APIError.
 func UploadWithID(client *http.Client, id string, p UploadParams) (*UploadResponse, error) {
 	var reqBody bytes.Buffer
-	multipartWriter := multipart.NewWriter(&reqBody)
+	writer := multipart.NewWriter(&reqBody)
 	for i, u := range p.Uploads {
 		path := u.Path
 		filename := u.Filename
@@ -182,7 +182,7 @@ func UploadWithID(client *http.Client, id string, p UploadParams) (*UploadRespon
 			return nil, fmt.Errorf("encrypting '%s' [index: %d]: %w", path, i, err)
 		}
 
-		formFile, err := multipartWriter.CreateFormFile("file_uploads", filename)
+		formFile, err := writer.CreateFormFile("file_uploads", filename)
 		if err != nil {
 			return nil, fmt.Errorf("creating form file '%s' [index: %d, name: %s]: %w",
 				path, i, filename, err)
@@ -193,19 +193,19 @@ func UploadWithID(client *http.Client, id string, p UploadParams) (*UploadRespon
 				path, i, filename, err)
 		}
 	}
-	multipartWriter.Close()
+	writer.Close()
 
 	req, err := NewRequest(RequestParams{
 		Method: "POST",
 		URL:    fmt.Sprintf("%s/api/upload/%s", p.BaseURL, id),
 		Body:   &reqBody,
 		Token:  p.Token,
+		Header: map[string]string{"Content-Type": writer.FormDataContentType()},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("creating request: %w", err)
 	}
 	defer req.Body.Close()
-	req.Header.Set("Content-Type", multipartWriter.FormDataContentType())
 
 	res, err := client.Do(req)
 	if err != nil {
