@@ -79,69 +79,11 @@ type UploadParams struct {
 // If the API responds with an error (non-200 status code), it will return nil and
 // an *APIError.
 func UploadWithPath(client *http.Client, path string, p UploadParams) (*UploadResponse, error) {
-	var reqBody bytes.Buffer
-	writer := multipart.NewWriter(&reqBody)
-	for i, u := range p.Uploads {
-		path := u.Path
-		filename := u.Filename
-
-		// Build the request body by reading each file on the file system,
-		// encrypt the data, and write to the form file.
-		file, err := os.Open(path)
-		if err != nil {
-			return nil, fmt.Errorf("opening '%s' [index: %d]: %w", path, i, err)
-		}
-		defer file.Close()
-
-		data, err := io.ReadAll(file)
-		if err != nil {
-			return nil, fmt.Errorf("reading '%s' [index: %d]: %w", path, i, err)
-		}
-
-		encData, err := p.Alg.Encrypt(data, p.Key)
-		if err != nil {
-			return nil, fmt.Errorf("encrypting '%s' [index: %d]: %w", path, i, err)
-		}
-
-		formFile, err := writer.CreateFormFile("file_uploads", filename)
-		if err != nil {
-			return nil, fmt.Errorf("creating form file '%s' [index: %d, name: %s]: %w",
-				path, i, filename, err)
-		}
-
-		if _, err := io.Copy(formFile, bytes.NewReader(encData)); err != nil {
-			return nil, fmt.Errorf("copying file '%s' [index: %d, name: %s]: %w",
-				path, i, filename, err)
-		}
-	}
-	writer.Close()
-
-	req, err := NewRequest(RequestParams{
-		Method: "POST",
-		URL:    fmt.Sprintf("%s/api/upload", p.BaseURL),
-		Body:   &reqBody,
-		Token:  p.Token,
-		Query:  map[string]string{"path": path},
-		Header: map[string]string{"Content-Type": writer.FormDataContentType()},
+	return upload(client, uploadConfig{
+		UploadParams: p,
+		URLPath:      "api/upload",
+		Query:        map[string]string{"path": path},
 	})
-	if err != nil {
-		return nil, fmt.Errorf("creating request: %w", err)
-	}
-	defer req.Body.Close()
-
-	res, err := client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("sending request: %w", err)
-	}
-	defer res.Body.Close()
-
-	respData := &UploadResponse{}
-	err = ParseResponse(res, respData)
-	if err != nil {
-		return nil, err
-	}
-
-	return respData, nil
 }
 
 // UploadWithID calls the API to upload files using a directory ID. The id parameter
@@ -158,9 +100,24 @@ func UploadWithPath(client *http.Client, path string, p UploadParams) (*UploadRe
 // If the API responds with an error (non-200 status code), it will return nil and
 // an *APIError.
 func UploadWithID(client *http.Client, id string, p UploadParams) (*UploadResponse, error) {
+	return upload(client, uploadConfig{
+		UploadParams: p,
+		URLPath:      fmt.Sprintf("api/upload/%s", id),
+	})
+}
+
+// uploadConfig is the configuration for calling the Clox API to upload files.
+type uploadConfig struct {
+	UploadParams
+	URLPath string
+	Query   map[string]string
+}
+
+// upload uploads files by calling the Clox API.
+func upload(client *http.Client, c uploadConfig) (*UploadResponse, error) {
 	var reqBody bytes.Buffer
 	writer := multipart.NewWriter(&reqBody)
-	for i, u := range p.Uploads {
+	for i, u := range c.Uploads {
 		path := u.Path
 		filename := u.Filename
 
@@ -177,7 +134,7 @@ func UploadWithID(client *http.Client, id string, p UploadParams) (*UploadRespon
 			return nil, fmt.Errorf("reading '%s' [index: %d]: %w", path, i, err)
 		}
 
-		encData, err := p.Alg.Encrypt(data, p.Key)
+		encData, err := c.Alg.Encrypt(data, c.Key)
 		if err != nil {
 			return nil, fmt.Errorf("encrypting '%s' [index: %d]: %w", path, i, err)
 		}
@@ -197,9 +154,10 @@ func UploadWithID(client *http.Client, id string, p UploadParams) (*UploadRespon
 
 	req, err := NewRequest(RequestParams{
 		Method: "POST",
-		URL:    fmt.Sprintf("%s/api/upload/%s", p.BaseURL, id),
+		URL:    fmt.Sprintf("%s/%s", c.BaseURL, c.URLPath),
 		Body:   &reqBody,
-		Token:  p.Token,
+		Token:  c.Token,
+		Query:  c.Query,
 		Header: map[string]string{"Content-Type": writer.FormDataContentType()},
 	})
 	if err != nil {
